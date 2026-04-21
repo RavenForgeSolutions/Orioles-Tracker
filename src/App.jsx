@@ -15,8 +15,8 @@ const PARKS = {
 
 // ── 2026 Orioles Schedule ──
 const INITIAL_SCHEDULE = [
-  { id: "g1", game: 1, date: "2026-04-26", time: "3:00 PM", opponent: "Angels", homeAway: "home", park: "DiPippo", result: "W" },
-  { id: "g2", game: 2, date: "2026-05-03", time: "4:00 PM", opponent: "Cubs", homeAway: "away", park: "Beachgrounds", result: "L" },
+  { id: "g1", game: 1, date: "2026-04-26", time: "3:00 PM", opponent: "Angels", homeAway: "home", park: "DiPippo" },
+  { id: "g2", game: 2, date: "2026-05-03", time: "4:00 PM", opponent: "Cubs", homeAway: "away", park: "Beachgrounds" },
   { id: "g3", game: 3, date: "2026-05-09", time: "10:00 AM", opponent: "Twins", homeAway: "away", park: "Forest Park #1" },
   { id: "g4", game: 4, date: "2026-05-17", time: "4:00 PM", opponent: "Athletics", homeAway: "home", park: "Duggan Jr. High" },
   { id: "g5", game: 5, date: "2026-05-20", time: "6:00 PM", opponent: "Tigers", homeAway: "home", park: "Spec Pond-Lights" },
@@ -32,86 +32,9 @@ const INITIAL_SCHEDULE = [
   { id: "g15", game: 15, date: "2026-08-02", time: "4:00 PM", opponent: "Tigers", homeAway: "home", park: "DiPippo" },
 ];
 
-const DEMO_ROSTER = [
-  { id: "1", name: "Sam R.", number: "7", order: 0, active: true, removed: false },
-  { id: "2", name: "Mike T.", number: "22", order: 1, active: true, removed: false },
-  { id: "3", name: "Jake L.", number: "13", order: 2, active: true, removed: false },
-  { id: "4", name: "Chris D.", number: "4", order: 3, active: true, removed: false },
-  { id: "5", name: "Ryan M.", number: "31", order: 4, active: true, removed: false },
-  { id: "6", name: "Danny K.", number: "8", order: 5, active: true, removed: false },
-  { id: "7", name: "Alex P.", number: "15", order: 6, active: true, removed: false },
-  { id: "8", name: "Josh B.", number: "44", order: 7, active: true, removed: false },
-  { id: "9", name: "Matt W.", number: "2", order: 8, active: true, removed: false },
-  { id: "10", name: "Tyler S.", number: "19", order: 9, active: true, removed: false },
-];
+const DEMO_ROSTER = [];
 
-const DEMO_ABS = [
-  // Game 1 vs Angels
-  { id: "a1", playerId: "1", gameId: "g1", result: "1B" },
-  { id: "a2", playerId: "1", gameId: "g1", result: "2B" },
-  { id: "a3", playerId: "1", gameId: "g1", result: "K" },
-  { id: "a4", playerId: "1", gameId: "g1", result: "1B" },
-  { id: "a5", playerId: "2", gameId: "g1", result: "HR" },
-  { id: "a6", playerId: "2", gameId: "g1", result: "BB" },
-  { id: "a7", playerId: "2", gameId: "g1", result: "1B" },
-  { id: "a8", playerId: "2", gameId: "g1", result: "FO" },
-  { id: "a9", playerId: "3", gameId: "g1", result: "K" },
-  { id: "a10", playerId: "3", gameId: "g1", result: "3B" },
-  { id: "a11", playerId: "3", gameId: "g1", result: "GO" },
-  { id: "a12", playerId: "3", gameId: "g1", result: "1B" },
-  { id: "a13", playerId: "4", gameId: "g1", result: "GO" },
-  { id: "a14", playerId: "4", gameId: "g1", result: "FO" },
-  { id: "a15", playerId: "4", gameId: "g1", result: "1B" },
-  { id: "a16", playerId: "5", gameId: "g1", result: "HBP" },
-  { id: "a17", playerId: "5", gameId: "g1", result: "2B" },
-  { id: "a18", playerId: "5", gameId: "g1", result: "HR" },
-  { id: "a19", playerId: "6", gameId: "g1", result: "BB" },
-  { id: "a20", playerId: "6", gameId: "g1", result: "K" },
-  { id: "a21", playerId: "6", gameId: "g1", result: "1B" },
-  { id: "a22", playerId: "7", gameId: "g1", result: "FO" },
-  { id: "a23", playerId: "7", gameId: "g1", result: "GO" },
-  { id: "a24", playerId: "7", gameId: "g1", result: "K" },
-  { id: "a25", playerId: "8", gameId: "g1", result: "1B" },
-  { id: "a26", playerId: "8", gameId: "g1", result: "2B" },
-  { id: "a27", playerId: "8", gameId: "g1", result: "BB" },
-  { id: "a28", playerId: "9", gameId: "g1", result: "K" },
-  { id: "a29", playerId: "9", gameId: "g1", result: "GO" },
-  { id: "a30", playerId: "9", gameId: "g1", result: "FO" },
-  { id: "a31", playerId: "10", gameId: "g1", result: "1B" },
-  { id: "a32", playerId: "10", gameId: "g1", result: "HR" },
-  { id: "a33", playerId: "10", gameId: "g1", result: "K" },
-  // Game 2 vs Cubs
-  { id: "b1", playerId: "1", gameId: "g2", result: "1B" },
-  { id: "b2", playerId: "1", gameId: "g2", result: "1B" },
-  { id: "b3", playerId: "1", gameId: "g2", result: "BB" },
-  { id: "b4", playerId: "2", gameId: "g2", result: "2B" },
-  { id: "b5", playerId: "2", gameId: "g2", result: "K" },
-  { id: "b6", playerId: "2", gameId: "g2", result: "1B" },
-  { id: "b7", playerId: "3", gameId: "g2", result: "HR" },
-  { id: "b8", playerId: "3", gameId: "g2", result: "GO" },
-  { id: "b9", playerId: "3", gameId: "g2", result: "BB" },
-  { id: "b10", playerId: "4", gameId: "g2", result: "1B" },
-  { id: "b11", playerId: "4", gameId: "g2", result: "1B" },
-  { id: "b12", playerId: "4", gameId: "g2", result: "FO" },
-  { id: "b13", playerId: "5", gameId: "g2", result: "K" },
-  { id: "b14", playerId: "5", gameId: "g2", result: "GO" },
-  { id: "b15", playerId: "5", gameId: "g2", result: "2B" },
-  { id: "b16", playerId: "6", gameId: "g2", result: "1B" },
-  { id: "b17", playerId: "6", gameId: "g2", result: "HR" },
-  { id: "b18", playerId: "6", gameId: "g2", result: "FO" },
-  { id: "b19", playerId: "7", gameId: "g2", result: "BB" },
-  { id: "b20", playerId: "7", gameId: "g2", result: "1B" },
-  { id: "b21", playerId: "7", gameId: "g2", result: "K" },
-  { id: "b22", playerId: "8", gameId: "g2", result: "GO" },
-  { id: "b23", playerId: "8", gameId: "g2", result: "1B" },
-  { id: "b24", playerId: "8", gameId: "g2", result: "3B" },
-  { id: "b25", playerId: "9", gameId: "g2", result: "FO" },
-  { id: "b26", playerId: "9", gameId: "g2", result: "1B" },
-  { id: "b27", playerId: "9", gameId: "g2", result: "HBP" },
-  { id: "b28", playerId: "10", gameId: "g2", result: "K" },
-  { id: "b29", playerId: "10", gameId: "g2", result: "2B" },
-  { id: "b30", playerId: "10", gameId: "g2", result: "BB" },
-];
+const DEMO_ABS = [];
 
 // ── Outcomes ──
 const OUTCOMES = [
@@ -940,4 +863,3 @@ export default function App() {
     </div>
   );
 }
-
