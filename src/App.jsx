@@ -155,12 +155,15 @@ function inputStyle() {
 // ══════════════════════════════════════════
 // First-Time User Setup Modal
 // ══════════════════════════════════════════
-function UserSetupModal({ onComplete }) {
+function UserSetupModal({ onComplete, onExisting, roster }) {
+  const [setupMode, setSetupMode] = useState("new");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [jersey, setJersey] = useState("");
+  const [selectedId, setSelectedId] = useState("");
 
   const isValid = firstName.trim() && lastName.trim() && jersey.trim();
+  const rosterPlayers = roster.filter((p) => !p.removed);
 
   const handleSubmit = () => {
     if (!isValid) return;
@@ -172,46 +175,88 @@ function UserSetupModal({ onComplete }) {
     onComplete(user);
   };
 
+  const handleExisting = () => {
+    const player = rosterPlayers.find((p) => p.id === selectedId);
+    if (!player) return;
+    const nameParts = player.name.split(". ");
+    const user = {
+      firstName: nameParts.length > 1 ? nameParts[0] + "." : player.name,
+      lastName: nameParts.length > 1 ? nameParts[1] : "",
+      jersey: player.number || "",
+      displayName: player.name,
+    };
+    setUserIdentity(user);
+    onExisting(user);
+  };
+
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
       <div style={{ background: C.card, borderRadius: 16, border: `2px solid ${C.orange}`, padding: "28px 24px", maxWidth: 360, width: "100%", boxShadow: `0 0 40px ${C.orange}20` }}>
         <div style={{ textAlign: "center", marginBottom: 20 }}>
           <div style={{ width: 56, height: 56, borderRadius: "50%", background: C.orange, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 28, fontWeight: 900, color: C.black, fontFamily: mono, boxShadow: `0 0 20px ${C.orange}40`, marginBottom: 12 }}>O</div>
           <div style={{ fontSize: 18, fontWeight: 800, color: C.orange, fontFamily: mono, letterSpacing: "1px" }}>ORIOLES 2026</div>
-          <div style={{ fontSize: 12, color: C.dim, fontFamily: mono, marginTop: 4 }}>Join the roster</div>
+          <div style={{ fontSize: 12, color: C.dim, fontFamily: mono, marginTop: 4 }}>{setupMode === "new" ? "Join the roster" : "Welcome back"}</div>
         </div>
 
-        <div style={{ marginBottom: 12 }}>
-          <label style={{ fontSize: 10, fontWeight: 700, color: C.orange, fontFamily: mono }}>FIRST NAME *</label>
-          <input type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} autoFocus style={{ ...inputStyle(), fontSize: 15, padding: "10px 12px" }} />
-        </div>
-
-        <div style={{ marginBottom: 12 }}>
-          <label style={{ fontSize: 10, fontWeight: 700, color: C.orange, fontFamily: mono }}>LAST NAME *</label>
-          <input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} style={{ ...inputStyle(), fontSize: 15, padding: "10px 12px" }} />
-        </div>
-
-        <div style={{ marginBottom: 20 }}>
-          <label style={{ fontSize: 10, fontWeight: 700, color: C.orange, fontFamily: mono }}>JERSEY # *</label>
-          <input type="text" value={jersey} onChange={(e) => setJersey(e.target.value)} maxLength={3} style={{ ...inputStyle(), fontSize: 15, padding: "10px 12px", width: 80 }} />
-        </div>
-
-        {isValid && (
-          <div style={{ marginBottom: 16, padding: "8px 12px", background: C.orangeBg, borderRadius: 8, border: `1px solid ${C.orange}30` }}>
-            <span style={{ fontSize: 11, color: C.dim, fontFamily: mono }}>You'll appear as: </span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: C.orange, fontFamily: mono }}>
-              {formatDisplayName(firstName.trim(), lastName.trim())}
-              <span style={{ opacity: 0.6 }}> #{jersey.trim()}</span>
-            </span>
-          </div>
+        {setupMode === "new" ? (
+          <>
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: 10, fontWeight: 700, color: C.orange, fontFamily: mono }}>FIRST NAME *</label>
+              <input type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} autoFocus style={{ ...inputStyle(), fontSize: 15, padding: "10px 12px" }} />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: 10, fontWeight: 700, color: C.orange, fontFamily: mono }}>LAST NAME *</label>
+              <input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} style={{ ...inputStyle(), fontSize: 15, padding: "10px 12px" }} />
+            </div>
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ fontSize: 10, fontWeight: 700, color: C.orange, fontFamily: mono }}>JERSEY # *</label>
+              <input type="text" value={jersey} onChange={(e) => setJersey(e.target.value)} maxLength={3} style={{ ...inputStyle(), fontSize: 15, padding: "10px 12px", width: 80 }} />
+            </div>
+            {isValid && (
+              <div style={{ marginBottom: 16, padding: "8px 12px", background: C.orangeBg, borderRadius: 8, border: `1px solid ${C.orange}30` }}>
+                <span style={{ fontSize: 11, color: C.dim, fontFamily: mono }}>You'll appear as: </span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: C.orange, fontFamily: mono }}>
+                  {formatDisplayName(firstName.trim(), lastName.trim())}
+                  <span style={{ opacity: 0.6 }}> #{jersey.trim()}</span>
+                </span>
+              </div>
+            )}
+            <button onClick={handleSubmit} disabled={!isValid} style={{
+              width: "100%", padding: 13, background: isValid ? C.orange : C.border,
+              color: isValid ? C.black : C.dim, border: "none", borderRadius: 10,
+              fontWeight: 800, fontSize: 14, cursor: isValid ? "pointer" : "default",
+              fontFamily: mono, letterSpacing: "0.5px",
+            }}>LET'S GO ⚾</button>
+          </>
+        ) : (
+          <>
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ fontSize: 10, fontWeight: 700, color: C.orange, fontFamily: mono }}>SELECT YOUR NAME</label>
+              <select value={selectedId} onChange={(e) => setSelectedId(e.target.value)} style={{ ...inputStyle(), fontSize: 15, padding: "10px 12px" }}>
+                <option value="" disabled>Choose...</option>
+                {rosterPlayers.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}{p.number ? ` #${p.number}` : ""}</option>
+                ))}
+              </select>
+            </div>
+            <button onClick={handleExisting} disabled={!selectedId} style={{
+              width: "100%", padding: 13, background: selectedId ? C.orange : C.border,
+              color: selectedId ? C.black : C.dim, border: "none", borderRadius: 10,
+              fontWeight: 800, fontSize: 14, cursor: selectedId ? "pointer" : "default",
+              fontFamily: mono, letterSpacing: "0.5px",
+            }}>THAT'S ME ⚾</button>
+          </>
         )}
 
-        <button onClick={handleSubmit} disabled={!isValid} style={{
-          width: "100%", padding: 13, background: isValid ? C.orange : C.border,
-          color: isValid ? C.black : C.dim, border: "none", borderRadius: 10,
-          fontWeight: 800, fontSize: 14, cursor: isValid ? "pointer" : "default",
-          fontFamily: mono, letterSpacing: "0.5px",
-        }}>LET'S GO ⚾</button>
+        {rosterPlayers.length > 0 && (
+          <div style={{ textAlign: "center", marginTop: 14, borderTop: `1px solid ${C.border}`, paddingTop: 14 }}>
+            <span style={{ fontSize: 11, color: C.dim, fontFamily: mono }}>or </span>
+            <button onClick={() => setSetupMode(setupMode === "new" ? "existing" : "new")} style={{
+              background: "none", border: "none", color: C.orange, fontSize: 11, fontWeight: 700,
+              cursor: "pointer", fontFamily: mono, textDecoration: "underline", padding: 0,
+            }}>{setupMode === "new" ? "I'm already on the roster" : "I'm new, add me"}</button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -846,6 +891,13 @@ export default function App() {
     setShowSetup(false);
   };
 
+  // ── Existing user selected from dropdown, skip auto-add ──
+  const handleExistingUser = (user) => {
+    hasAutoAdded.current = true;
+    setCurrentUser(user);
+    setShowSetup(false);
+  };
+
   // ── Auto-add user to roster after first sync completes ──
   useEffect(() => {
     if (hasAutoAdded.current || !currentUser || !hasSynced.current) return;
@@ -990,7 +1042,7 @@ export default function App() {
         select option { background: ${C.card}; color: ${C.text}; }
       `}</style>
 
-      {showSetup && <UserSetupModal onComplete={handleUserSetup} />}
+      {showSetup && <UserSetupModal onComplete={handleUserSetup} onExisting={handleExistingUser} roster={roster} />}
 
       {toast && (
         <div style={{ position: "fixed", top: 14, left: "50%", transform: "translateX(-50%)", background: C.card, border: `2px solid ${toast.color}`, borderRadius: 10, padding: "8px 18px", zIndex: 200, boxShadow: `0 4px 20px ${toast.color}25`, animation: "toastIn 0.15s ease-out" }}>
