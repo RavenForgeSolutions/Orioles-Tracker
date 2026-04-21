@@ -427,10 +427,10 @@ function GameView({ roster, atBats, schedule, gameId, setGameId, onLog, onGameRe
 
           {/* Inning tracker + scoreboard icon */}
           <div style={{ padding: "0 14px 12px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
               {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((inn) => (
                 <button key={inn} onClick={() => !isLocked && onUpdateInning(game.id, inning === inn ? 0 : inn)} disabled={isLocked} style={{
-                  width: 28, height: 28, borderRadius: 6, fontFamily: mono, fontSize: 11, fontWeight: 700,
+                  width: 34, height: 34, borderRadius: 8, fontFamily: mono, fontSize: 13, fontWeight: 700,
                   cursor: isLocked ? "default" : "pointer", padding: 0,
                   border: `1.5px solid ${inning === inn ? C.orange : C.border}`,
                   background: inning === inn ? C.orange : "transparent",
@@ -441,7 +441,7 @@ function GameView({ roster, atBats, schedule, gameId, setGameId, onLog, onGameRe
               ))}
               {/* Scoreboard icon */}
               <button onClick={() => setShowResult(true)} style={{
-                width: 34, height: 28, borderRadius: 6, marginLeft: 2, padding: 0, flexShrink: 0,
+                width: 40, height: 34, borderRadius: 8, marginLeft: 2, padding: 0, flexShrink: 0,
                 border: `1.5px solid ${isLocked ? (game.result === "W" ? C.green : C.danger) : C.orange}60`,
                 background: isLocked ? (game.result === "W" ? C.greenBg : C.dangerBg) : C.orangeBg,
                 color: isLocked ? (game.result === "W" ? C.green : C.danger) : C.orange,
@@ -512,6 +512,7 @@ function GameView({ roster, atBats, schedule, gameId, setGameId, onLog, onGameRe
 function StatsView({ roster, atBats, schedule }) {
   const [mode, setMode] = useState("season");
   const [selGame, setSelGame] = useState("");
+  const [selPlayer, setSelPlayer] = useState(null); // null = team, or player id
   const filtered = mode === "season" ? atBats : atBats.filter((ab) => ab.gameId === selGame);
   const team = calcStats(filtered);
   const players = roster.map((p) => {
@@ -520,35 +521,69 @@ function StatsView({ roster, atBats, schedule }) {
     return { ...p, st: calcStats(pABs) };
   }).filter(Boolean).sort((a, b) => b.st.avg - a.st.avg);
 
+  const selP = selPlayer ? players.find((p) => p.id === selPlayer) : null;
+  const display = selP ? selP.st : team;
+  const displayLabel = selP ? selP.name : "TEAM";
+
   return (
     <div>
       <div style={{ padding: "10px 14px 8px" }}>
         <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
           <button onClick={() => setMode("season")} style={{ flex: 1, padding: 8, background: mode === "season" ? C.orange : C.card, color: mode === "season" ? C.black : C.dim, border: `1px solid ${mode === "season" ? C.orange : C.border}`, borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: mono }}>Season</button>
-          <select value={selGame} onChange={(e) => { setMode("game"); setSelGame(e.target.value); }} style={{ flex: 1.3, padding: 8, background: mode === "game" ? C.orange : C.card, color: mode === "game" ? C.black : C.dim, border: `1px solid ${mode === "game" ? C.orange : C.border}`, borderRadius: 6, fontWeight: 700, fontSize: 12, fontFamily: mono }}>
+          <select value={selGame} onChange={(e) => { setMode("game"); setSelGame(e.target.value); setSelPlayer(null); }} style={{ flex: 1.3, padding: 8, background: mode === "game" ? C.orange : C.card, color: mode === "game" ? C.black : C.dim, border: `1px solid ${mode === "game" ? C.orange : C.border}`, borderRadius: 6, fontWeight: 700, fontSize: 12, fontFamily: mono }}>
             <option value="" disabled>By game...</option>
             {schedule.map((g) => { const dt = new Date(g.date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }); return <option key={g.id} value={g.id}>G{g.game} {dt} vs {g.opponent}</option>; })}
           </select>
         </div>
-        <div style={{ background: C.card, borderRadius: 10, padding: 12, marginBottom: 10, border: `1px solid ${C.orange}25`, display: "flex", gap: 5, flexWrap: "wrap", justifyContent: "center" }}>
-          {[["AVG", f3(team.avg), C.orange], ["OBP", f3(team.obp), C.orangeBright], ["SLG", f3(team.slg), "#fbbf24"], ["OPS", f3(team.ops), team.ops >= .8 ? C.orange : C.text], ["H", team.hits], ["HR", team.hr, C.orange], ["BB", team.bb, "#fbbf24"], ["K", team.k, C.dim]].map(([l, v, c]) => (
+
+        {/* Stat display header */}
+        <div style={{ textAlign: "center", marginBottom: 4 }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: selP ? C.orange : C.dim, fontFamily: mono }}>{displayLabel}</span>
+        </div>
+
+        <div style={{ background: C.card, borderRadius: 10, padding: 12, marginBottom: 10, border: `1px solid ${selP ? C.orange + "50" : C.orange + "25"}`, display: "flex", gap: 5, flexWrap: "wrap", justifyContent: "center" }}>
+          {[["AVG", f3(display.avg), C.orange], ["OBP", f3(display.obp), C.orangeBright], ["SLG", f3(display.slg), "#fbbf24"], ["OPS", f3(display.ops), display.ops >= .8 ? C.orange : C.text], ["H", display.hits], ["HR", display.hr, C.orange], ["BB", display.bb, "#fbbf24"], ["K", display.k, C.dim]].map(([l, v, c]) => (
             <div key={l} style={{ background: C.bg, borderRadius: 6, padding: "6px 8px", display: "flex", flexDirection: "column", alignItems: "center", minWidth: 42 }}>
               <span style={{ fontSize: 14, fontWeight: 800, color: c || C.text, fontFamily: mono }}>{v}</span>
               <span style={{ fontSize: 8, color: C.dim, fontWeight: 700, fontFamily: mono }}>{l}</span>
             </div>
           ))}
         </div>
+
         <div style={{ background: C.card, borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden" }}>
           <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 30px 30px 30px 40px 40px 40px", padding: "7px 10px", borderBottom: `1px solid ${C.orange}30`, background: C.orangeBg, gap: 2 }}>
             {["", "AB", "H", "HR", "AVG", "OBP", "OPS"].map((h) => <span key={h} style={{ fontSize: 8, fontWeight: 700, color: C.orange, fontFamily: mono, textAlign: h ? "center" : "left" }}>{h}</span>)}
           </div>
-          {players.map((p, i) => (
-            <div key={p.id} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 30px 30px 30px 40px 40px 40px", padding: "8px 10px", borderBottom: i < players.length - 1 ? `1px solid ${C.border}` : "none", background: i % 2 ? C.bg + "80" : "transparent", gap: 2 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: C.text, fontFamily: sans, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
-              {[p.st.atbats, p.st.hits, p.st.hr].map((v, j) => <span key={j} style={{ fontSize: 11, fontWeight: 600, textAlign: "center", color: C.text, fontFamily: mono }}>{v}</span>)}
-              {[[f3(p.st.avg), p.st.avg >= .3 ? C.orange : C.text], [f3(p.st.obp), p.st.obp >= .4 ? C.orangeBright : C.text], [f3(p.st.ops), p.st.ops >= .8 ? "#fbbf24" : C.text]].map(([v, c], j) => <span key={j + 3} style={{ fontSize: 11, fontWeight: 600, textAlign: "center", color: c, fontFamily: mono }}>{v}</span>)}
+          {players.map((p, i) => {
+            const isSelected = selPlayer === p.id;
+            return (
+              <div key={p.id} onClick={() => setSelPlayer(isSelected ? null : p.id)} style={{
+                display: "grid", gridTemplateColumns: "minmax(0,1fr) 30px 30px 30px 40px 40px 40px",
+                padding: "8px 10px", borderBottom: `1px solid ${C.border}`, cursor: "pointer",
+                background: isSelected ? C.orangeBg : (i % 2 ? C.bg + "80" : "transparent"),
+                border: isSelected ? `1px solid ${C.orange}40` : "1px solid transparent",
+                gap: 2, WebkitTapHighlightColor: "transparent",
+              }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: isSelected ? C.orange : C.text, fontFamily: sans, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
+                {[p.st.atbats, p.st.hits, p.st.hr].map((v, j) => <span key={j} style={{ fontSize: 11, fontWeight: 600, textAlign: "center", color: C.text, fontFamily: mono }}>{v}</span>)}
+                {[[f3(p.st.avg), p.st.avg >= .3 ? C.orange : C.text], [f3(p.st.obp), p.st.obp >= .4 ? C.orangeBright : C.text], [f3(p.st.ops), p.st.ops >= .8 ? "#fbbf24" : C.text]].map(([v, c], j) => <span key={j + 3} style={{ fontSize: 11, fontWeight: 600, textAlign: "center", color: c, fontFamily: mono }}>{v}</span>)}
+              </div>
+            );
+          })}
+          {/* Team totals row at bottom */}
+          {players.length > 0 && (
+            <div onClick={() => setSelPlayer(null)} style={{
+              display: "grid", gridTemplateColumns: "minmax(0,1fr) 30px 30px 30px 40px 40px 40px",
+              padding: "8px 10px", cursor: "pointer",
+              background: !selPlayer ? C.orangeBg : C.card,
+              borderTop: `2px solid ${C.orange}30`,
+              gap: 2, WebkitTapHighlightColor: "transparent",
+            }}>
+              <span style={{ fontSize: 11, fontWeight: 800, color: !selPlayer ? C.orange : C.dim, fontFamily: mono }}>TEAM</span>
+              {[team.atbats, team.hits, team.hr].map((v, j) => <span key={j} style={{ fontSize: 11, fontWeight: 700, textAlign: "center", color: !selPlayer ? C.orange : C.dim, fontFamily: mono }}>{v}</span>)}
+              {[[f3(team.avg), C.orange], [f3(team.obp), C.orangeBright], [f3(team.ops), "#fbbf24"]].map(([v, c], j) => <span key={j + 3} style={{ fontSize: 11, fontWeight: 700, textAlign: "center", color: !selPlayer ? c : C.dim, fontFamily: mono }}>{v}</span>)}
             </div>
-          ))}
+          )}
           {players.length === 0 && <div style={{ padding: 24, textAlign: "center", color: C.dim, fontSize: 12, fontFamily: mono }}>No stats yet.</div>}
         </div>
       </div>
@@ -984,4 +1019,3 @@ export default function App() {
     </div>
   );
 }
-
