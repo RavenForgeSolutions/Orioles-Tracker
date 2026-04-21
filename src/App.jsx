@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useRef } from "react";
 
 // ══════════════════════════════════════════
 // CONFIGURATION - Apps Script Web App URL
-// After deploying the Apps Script, paste the URL here
 // ══════════════════════════════════════════
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyTEpHUdcXfNTs_k84WDQl9ltRB_3RRe5KcBHQRLwTS38dCDTjBHeJHZU8MuqWFyRcx2Q/exec";
 
@@ -19,7 +18,7 @@ const PARKS = {
   "South Hadley HS": { name: "South Hadley HS", address: "18 Lincoln Ave, South Hadley, MA" },
 };
 
-// ── Fallback Schedule (used if sheet is empty) ──
+// ── Fallback Schedule ──
 const FALLBACK_SCHEDULE = [
   { id: "g1", game: 1, date: "2026-04-26", time: "3:00 PM", opponent: "Angels", homeAway: "home", park: "DiPippo" },
   { id: "g2", game: 2, date: "2026-05-03", time: "4:00 PM", opponent: "Cubs", homeAway: "away", park: "Beachgrounds" },
@@ -82,6 +81,26 @@ function openDir(park) {
 }
 
 // ══════════════════════════════════════════
+// User Identity (localStorage)
+// ══════════════════════════════════════════
+function getUserIdentity() {
+  try {
+    const raw = localStorage.getItem("orioles_user");
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return null;
+}
+
+function setUserIdentity(user) {
+  localStorage.setItem("orioles_user", JSON.stringify(user));
+}
+
+function formatDisplayName(firstName, lastName) {
+  if (!lastName) return firstName;
+  return `${firstName.charAt(0).toUpperCase()}. ${lastName}`;
+}
+
+// ══════════════════════════════════════════
 // Google Sheets API Layer
 // ══════════════════════════════════════════
 async function fetchAll() {
@@ -99,6 +118,11 @@ async function fetchAll() {
 async function postToSheet(payload) {
   if (!SCRIPT_URL) return;
   try {
+    // Attach current user for audit log
+    const user = getUserIdentity();
+    if (user) {
+      payload.user = user.displayName;
+    }
     await fetch(SCRIPT_URL, {
       method: "POST",
       headers: { "Content-Type": "text/plain" },
@@ -109,13 +133,14 @@ async function postToSheet(payload) {
   }
 }
 
-// ── Orioles Orange & Black Theme ──
+// ── Theme ──
 const C = {
   bg: "#0d0d0d", card: "#1a1a1a", cardAlt: "#222222", border: "#2e2e2e",
   text: "#f5f5f5", dim: "#888888",
   orange: "#f97316", orangeBright: "#fb923c", orangeDim: "#7c2d12",
   orangeBg: "#1f1208", black: "#0d0d0d", white: "#f5f5f5",
   danger: "#ef4444", dangerBg: "#3b1111", accent: "#f97316", accentBg: "#1f1208",
+  green: "#22c55e", greenBg: "#052e16",
 };
 const mono = "'IBM Plex Mono', monospace";
 const sans = "'IBM Plex Sans', system-ui, sans-serif";
@@ -127,8 +152,139 @@ function inputStyle() {
   };
 }
 
+// ══════════════════════════════════════════
+// First-Time User Setup Modal
+// ══════════════════════════════════════════
+function UserSetupModal({ onComplete }) {
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [jersey, setJersey] = useState("");
+
+  const isValid = firstName.trim() && lastName.trim() && jersey.trim();
+
+  const handleSubmit = () => {
+    if (!isValid) return;
+    const fn = firstName.trim();
+    const ln = lastName.trim();
+    const displayName = formatDisplayName(fn, ln);
+    const user = { firstName: fn, lastName: ln, jersey: jersey.trim(), displayName };
+    setUserIdentity(user);
+    onComplete(user);
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div style={{ background: C.card, borderRadius: 16, border: `2px solid ${C.orange}`, padding: "28px 24px", maxWidth: 360, width: "100%", boxShadow: `0 0 40px ${C.orange}20` }}>
+        <div style={{ textAlign: "center", marginBottom: 20 }}>
+          <div style={{ width: 56, height: 56, borderRadius: "50%", background: C.orange, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 28, fontWeight: 900, color: C.black, fontFamily: mono, boxShadow: `0 0 20px ${C.orange}40`, marginBottom: 12 }}>O</div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: C.orange, fontFamily: mono, letterSpacing: "1px" }}>ORIOLES 2026</div>
+          <div style={{ fontSize: 12, color: C.dim, fontFamily: mono, marginTop: 4 }}>Join the roster</div>
+        </div>
+
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ fontSize: 10, fontWeight: 700, color: C.orange, fontFamily: mono }}>FIRST NAME *</label>
+          <input type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} autoFocus style={{ ...inputStyle(), fontSize: 15, padding: "10px 12px" }} />
+        </div>
+
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ fontSize: 10, fontWeight: 700, color: C.orange, fontFamily: mono }}>LAST NAME *</label>
+          <input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} style={{ ...inputStyle(), fontSize: 15, padding: "10px 12px" }} />
+        </div>
+
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ fontSize: 10, fontWeight: 700, color: C.orange, fontFamily: mono }}>JERSEY # *</label>
+          <input type="text" value={jersey} onChange={(e) => setJersey(e.target.value)} maxLength={3} style={{ ...inputStyle(), fontSize: 15, padding: "10px 12px", width: 80 }} />
+        </div>
+
+        {isValid && (
+          <div style={{ marginBottom: 16, padding: "8px 12px", background: C.orangeBg, borderRadius: 8, border: `1px solid ${C.orange}30` }}>
+            <span style={{ fontSize: 11, color: C.dim, fontFamily: mono }}>You'll appear as: </span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: C.orange, fontFamily: mono }}>
+              {formatDisplayName(firstName.trim(), lastName.trim())}
+              <span style={{ opacity: 0.6 }}> #{jersey.trim()}</span>
+            </span>
+          </div>
+        )}
+
+        <button onClick={handleSubmit} disabled={!isValid} style={{
+          width: "100%", padding: 13, background: isValid ? C.orange : C.border,
+          color: isValid ? C.black : C.dim, border: "none", borderRadius: 10,
+          fontWeight: 800, fontSize: 14, cursor: isValid ? "pointer" : "default",
+          fontFamily: mono, letterSpacing: "0.5px",
+        }}>LET'S GO ⚾</button>
+      </div>
+    </div>
+  );
+}
+
+// ── Score Input Modal ──
+function ScoreModal({ game, result, onConfirm, onCancel }) {
+  const [oriScore, setOriScore] = useState("");
+  const [oppScore, setOppScore] = useState("");
+
+  const handleConfirm = () => {
+    const os = parseInt(oriScore) || 0;
+    const ops = parseInt(oppScore) || 0;
+    onConfirm(result, os, ops);
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div style={{ background: C.card, borderRadius: 14, border: `2px solid ${result === "W" ? C.green : C.danger}`, padding: "24px 20px", maxWidth: 320, width: "100%", boxShadow: `0 0 30px ${result === "W" ? C.green : C.danger}20` }}>
+        <div style={{ textAlign: "center", marginBottom: 16 }}>
+          <div style={{ fontSize: 36, fontWeight: 900, color: result === "W" ? C.green : C.danger, fontFamily: mono }}>{result === "W" ? "WIN" : "LOSS"}</div>
+          <div style={{ fontSize: 12, color: C.dim, fontFamily: mono }}>vs {game.opponent}</div>
+        </div>
+
+        <div style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: C.orange, fontFamily: mono, marginBottom: 4 }}>ORIOLES</div>
+            <input type="number" inputMode="numeric" value={oriScore} onChange={(e) => setOriScore(e.target.value)} autoFocus placeholder="0" style={{
+              width: 64, height: 52, background: C.bg, border: `2px solid ${C.orange}50`, borderRadius: 10,
+              color: C.orange, fontSize: 24, fontWeight: 800, fontFamily: mono, textAlign: "center", boxSizing: "border-box",
+            }} />
+          </div>
+          <span style={{ fontSize: 18, color: C.dim, fontFamily: mono, paddingTop: 16 }}>-</span>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: C.text, fontFamily: mono, marginBottom: 4 }}>{game.opponent.toUpperCase()}</div>
+            <input type="number" inputMode="numeric" value={oppScore} onChange={(e) => setOppScore(e.target.value)} placeholder="0" style={{
+              width: 64, height: 52, background: C.bg, border: `2px solid ${C.border}`, borderRadius: 10,
+              color: C.text, fontSize: 24, fontWeight: 800, fontFamily: mono, textAlign: "center", boxSizing: "border-box",
+            }} />
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={onCancel} style={{
+            flex: 1, padding: 11, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8,
+            color: C.dim, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: mono,
+          }}>Cancel</button>
+          <button onClick={handleConfirm} style={{
+            flex: 1, padding: 11, background: result === "W" ? C.green : C.danger, border: "none", borderRadius: 8,
+            color: C.white, fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: mono,
+          }}>Save {result}</button>
+        </div>
+
+        <div style={{ textAlign: "center", marginTop: 10 }}>
+          <button onClick={() => onConfirm(result, null, null)} style={{
+            background: "none", border: "none", color: C.dim, fontSize: 10, cursor: "pointer", fontFamily: mono, textDecoration: "underline",
+          }}>Skip score, just mark {result}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Format score display ──
+function formatScore(game) {
+  if (game.orilesScore != null && game.opponentScore != null && (game.orilesScore > 0 || game.opponentScore > 0)) {
+    return `${game.orilesScore}-${game.opponentScore}`;
+  }
+  return null;
+}
+
 // ── Header ──
-function AppHeader({ schedule }) {
+function AppHeader({ schedule, currentUser }) {
   const wins = schedule.filter((g) => g.result === "W").length;
   const losses = schedule.filter((g) => g.result === "L").length;
   const hasRecord = wins + losses > 0;
@@ -138,7 +294,11 @@ function AppHeader({ schedule }) {
         <div style={{ width: 36, height: 36, borderRadius: "50%", background: C.orange, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 900, color: C.black, fontFamily: mono, boxShadow: `0 0 12px ${C.orange}40` }}>O</div>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 16, fontWeight: 800, color: C.orange, fontFamily: mono, letterSpacing: "1px" }}>ORIOLES</div>
-          <div style={{ fontSize: 10, fontWeight: 600, color: C.dim, fontFamily: mono, letterSpacing: "0.5px" }}>SUMMER 2026</div>
+          <div style={{ fontSize: 10, fontWeight: 600, color: C.dim, fontFamily: mono, letterSpacing: "0.5px" }}>
+            {currentUser ? (
+              <span>SUMMER 2026 · <span style={{ color: C.orangeBright }}>{currentUser.displayName}{currentUser.jersey ? ` #${currentUser.jersey}` : ""}</span></span>
+            ) : "SUMMER 2026"}
+          </div>
         </div>
         {hasRecord && (
           <div style={{ textAlign: "right" }}>
@@ -189,7 +349,7 @@ function GameView({ roster, atBats, schedule, gameId, setGameId, onLog, onGameRe
         }}>
           {schedule.map((g) => {
             const dt = new Date(g.date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
-            const res = g.result ? ` [${g.result}]` : "";
+            const res = g.result ? ` [${g.result}${formatScore(g) ? ` ${formatScore(g)}` : ""}]` : "";
             return <option key={g.id} value={g.id}>G{g.game}: {dt} {g.homeAway === "home" ? "vs" : "@"} {g.opponent}{res}</option>;
           })}
         </select>
@@ -205,6 +365,22 @@ function GameView({ roster, atBats, schedule, gameId, setGameId, onLog, onGameRe
             </div>
             <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 7px", borderRadius: 4, fontFamily: mono, color: game.homeAway === "home" ? C.orange : "#60a5fa", background: game.homeAway === "home" ? C.orangeBg : "#0d1a2e" }}>{game.homeAway === "home" ? "HOME" : "AWAY"}</span>
           </div>
+
+          {/* Score display */}
+          {game.result && formatScore(game) && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, padding: "8px 0", marginBottom: 6 }}>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 28, fontWeight: 900, color: game.result === "W" ? C.green : C.danger, fontFamily: mono, lineHeight: 1 }}>{game.orilesScore}</div>
+                <div style={{ fontSize: 8, fontWeight: 700, color: C.orange, fontFamily: mono }}>ORI</div>
+              </div>
+              <div style={{ fontSize: 16, color: C.dim, fontFamily: mono }}>-</div>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 28, fontWeight: 900, color: game.result === "L" ? C.green : C.danger, fontFamily: mono, lineHeight: 1 }}>{game.opponentScore}</div>
+                <div style={{ fontSize: 8, fontWeight: 700, color: C.dim, fontFamily: mono }}>{game.opponent.substring(0, 3).toUpperCase()}</div>
+              </div>
+            </div>
+          )}
+
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontSize: 11, color: C.dim, fontFamily: mono }}>
               {new Date(game.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })} · {game.time}
@@ -218,16 +394,16 @@ function GameView({ roster, atBats, schedule, gameId, setGameId, onLog, onGameRe
             )}
           </div>
           <div style={{ display: "flex", gap: 6, marginTop: 10, borderTop: `1px solid ${C.border}`, paddingTop: 10 }}>
-            <button onClick={() => onGameResult(game.id, game.result === "W" ? null : "W")} style={{
+            <button onClick={() => onGameResult(game.id, game.result === "W" ? null : "W", game)} style={{
               flex: 1, padding: "8px", borderRadius: 6, fontFamily: mono, fontSize: 13, fontWeight: 800,
-              cursor: "pointer", border: `2px solid ${game.result === "W" ? "#22c55e" : C.border}`,
-              background: game.result === "W" ? "#22c55e" : C.bg, color: game.result === "W" ? C.black : C.dim,
-            }}>W</button>
-            <button onClick={() => onGameResult(game.id, game.result === "L" ? null : "L")} style={{
+              cursor: "pointer", border: `2px solid ${game.result === "W" ? C.green : C.border}`,
+              background: game.result === "W" ? C.green : C.bg, color: game.result === "W" ? C.black : C.dim,
+            }}>W{game.result === "W" && formatScore(game) ? ` ${game.orilesScore}-${game.opponentScore}` : ""}</button>
+            <button onClick={() => onGameResult(game.id, game.result === "L" ? null : "L", game)} style={{
               flex: 1, padding: "8px", borderRadius: 6, fontFamily: mono, fontSize: 13, fontWeight: 800,
               cursor: "pointer", border: `2px solid ${game.result === "L" ? C.danger : C.border}`,
               background: game.result === "L" ? C.danger : C.bg, color: game.result === "L" ? C.white : C.dim,
-            }}>L</button>
+            }}>L{game.result === "L" && formatScore(game) ? ` ${game.opponentScore}-${game.orilesScore}` : ""}</button>
           </div>
         </div>
       )}
@@ -345,8 +521,9 @@ function ScheduleView({ schedule, onUpdateGame }) {
       <div style={{ padding: "0 14px 80px" }}>
         {schedule.map((g) => {
           const d = new Date(g.date + "T12:00:00"); const isPast = g.date < today; const isToday = g.date === today; const park = PARKS[g.park]; const ed = editing === g.id;
+          const score = formatScore(g);
           return (
-            <div key={g.id} style={{ background: C.card, borderRadius: 10, marginBottom: 6, border: `1px solid ${isToday ? C.orange + "80" : ed ? C.orange + "50" : C.border}`, opacity: isPast ? 0.4 : 1, overflow: "hidden" }}>
+            <div key={g.id} style={{ background: C.card, borderRadius: 10, marginBottom: 6, border: `1px solid ${isToday ? C.orange + "80" : ed ? C.orange + "50" : C.border}`, opacity: isPast && !g.result ? 0.4 : 1, overflow: "hidden" }}>
               <div style={{ display: "flex", alignItems: "center", padding: "10px 12px", gap: 10 }}>
                 <div style={{ width: 40, display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, background: C.orangeBg, borderRadius: 6, padding: "4px 0" }}>
                   <span style={{ fontSize: 8, fontWeight: 700, color: C.orange, fontFamily: mono }}>{d.toLocaleDateString("en-US", { month: "short" }).toUpperCase()}</span>
@@ -357,6 +534,11 @@ function ScheduleView({ schedule, onUpdateGame }) {
                   <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
                     <span style={{ fontSize: 13, fontWeight: 700, color: C.text, fontFamily: sans }}>{g.homeAway === "home" ? "vs" : "@"} {g.opponent}</span>
                     <span style={{ fontSize: 8, fontWeight: 700, padding: "2px 5px", borderRadius: 3, fontFamily: mono, color: g.homeAway === "home" ? C.orange : "#60a5fa", background: g.homeAway === "home" ? C.orangeBg : "#0d1a2e" }}>{g.homeAway === "home" ? "HOME" : "AWAY"}</span>
+                    {g.result && (
+                      <span style={{ fontSize: 9, fontWeight: 800, padding: "2px 6px", borderRadius: 3, fontFamily: mono, color: g.result === "W" ? C.green : C.danger, background: g.result === "W" ? C.greenBg : C.dangerBg }}>
+                        {g.result}{score ? ` ${score}` : ""}
+                      </span>
+                    )}
                   </div>
                   <div style={{ fontSize: 10, color: C.dim, fontFamily: mono }}>{g.time} · {park?.name || g.park}</div>
                 </div>
@@ -527,7 +709,7 @@ function InstallBanner() {
 }
 
 // ══════════════════════════════════════════
-// Main App with Google Sheets Sync
+// Main App
 // ══════════════════════════════════════════
 export default function App() {
   const [tab, setTab] = useState("game");
@@ -539,6 +721,10 @@ export default function App() {
   const [syncing, setSyncing] = useState(false);
   const [lastSync, setLastSync] = useState(null);
   const [connected, setConnected] = useState(!!SCRIPT_URL);
+  const [currentUser, setCurrentUser] = useState(getUserIdentity);
+  const [showSetup, setShowSetup] = useState(!getUserIdentity());
+  const [scoreModal, setScoreModal] = useState(null); // { gameId, result, game }
+  const hasAutoAdded = useRef(false);
 
   const showToast = (msg, color) => { setToast({ msg, color }); setTimeout(() => setToast(null), 1800); };
 
@@ -550,14 +736,20 @@ export default function App() {
     if (data) {
       if (data.roster && data.roster.length > 0) setRoster(data.roster);
       if (data.atBats) setAtBats(data.atBats);
-      if (data.schedule && data.schedule.length > 0) setSchedule(data.schedule);
+      if (data.schedule && data.schedule.length > 0) {
+        // Merge score fields from sheet data
+        setSchedule(data.schedule.map((g) => ({
+          ...g,
+          orilesScore: g.orilesScore ?? null,
+          opponentScore: g.opponentScore ?? null,
+        })));
+      }
       setLastSync(new Date().toLocaleTimeString());
       setConnected(true);
     }
     setSyncing(false);
   }, []);
 
-  // Load on mount and poll every 15 seconds
   useEffect(() => {
     loadData();
     if (SCRIPT_URL) {
@@ -566,7 +758,32 @@ export default function App() {
     }
   }, [loadData]);
 
-  // ── Action handlers (update local state + post to sheet) ──
+  // ── Auto-add user to roster on first setup ──
+  const handleUserSetup = (user) => {
+    setCurrentUser(user);
+    setShowSetup(false);
+
+    // Check if user is already on roster
+    const displayName = user.displayName;
+    const alreadyOnRoster = roster.some((p) => p.name === displayName);
+    if (!alreadyOnRoster && !hasAutoAdded.current) {
+      hasAutoAdded.current = true;
+      const maxOrder = Math.max(...roster.filter((p) => p.active && !p.removed).map((p) => p.order), -1);
+      const newPlayer = {
+        id: `p_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`,
+        name: displayName,
+        number: user.jersey || "",
+        order: maxOrder + 1,
+        active: true,
+        removed: false,
+      };
+      setRoster((prev) => [...prev, newPlayer]);
+      postToSheet({ action: "addPlayer", ...newPlayer });
+      showToast(`${displayName} added to roster!`, C.orange);
+    }
+  };
+
+  // ── Action handlers ──
   const logAtBat = (playerId, result) => {
     if (result === "__UNDO__") {
       setAtBats((prev) => {
@@ -599,14 +816,12 @@ export default function App() {
       const updated = prev.map((p) => {
         if (p.id !== id) return p;
         const newP = { ...p, ...updates };
-        // If toggling active, fix order
         if (updates.active === true && !p.active) {
           const mx = Math.max(...prev.filter((x) => x.active && !x.removed && x.id !== id).map((x) => x.order), -1);
           newP.order = mx + 1;
         }
         return newP;
       });
-      // Reindex active orders
       updated.filter((p) => p.active && !p.removed).sort((a, b) => a.order - b.order).forEach((p, i) => { p.order = i; });
       return [...updated];
     });
@@ -633,14 +848,34 @@ export default function App() {
     handleUpdatePlayer(id, { removed: false, active: true, order: mx + 1 });
   };
 
-  const handleGameResult = (gameId, result) => {
-    setSchedule((s) => s.map((g) => g.id === gameId ? { ...g, result: result || "" } : g));
-    postToSheet({ action: "updateGame", id: gameId, result: result || "" });
+  // ── Game result with score modal ──
+  const handleGameResult = (gId, result, game) => {
+    if (result === null) {
+      // Toggling off: clear result and scores
+      setSchedule((s) => s.map((g) => g.id === gId ? { ...g, result: "", orilesScore: null, opponentScore: null } : g));
+      postToSheet({ action: "updateGame", id: gId, result: "", orilesScore: "", opponentScore: "" });
+      return;
+    }
+    // Open score modal
+    setScoreModal({ gameId: gId, result, game });
   };
 
-  const handleUpdateGame = (gameId, updates) => {
-    setSchedule((s) => s.map((g) => g.id === gameId ? { ...g, ...updates } : g));
-    postToSheet({ action: "updateGame", id: gameId, ...updates });
+  const handleScoreConfirm = (result, oriScore, oppScore) => {
+    const gId = scoreModal.gameId;
+    const updates = {
+      result,
+      orilesScore: oriScore != null ? oriScore : "",
+      opponentScore: oppScore != null ? oppScore : "",
+    };
+    setSchedule((s) => s.map((g) => g.id === gId ? { ...g, ...updates } : g));
+    postToSheet({ action: "updateGame", id: gId, ...updates });
+    setScoreModal(null);
+    showToast(`${result}${oriScore != null ? ` ${oriScore}-${oppScore}` : ""}`, result === "W" ? C.green : C.danger);
+  };
+
+  const handleUpdateGame = (gId, updates) => {
+    setSchedule((s) => s.map((g) => g.id === gId ? { ...g, ...updates } : g));
+    postToSheet({ action: "updateGame", id: gId, ...updates });
   };
 
   return (
@@ -649,9 +884,14 @@ export default function App() {
       <style>{`
         * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
         input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.8); }
+        input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type="number"] { -moz-appearance: textfield; }
         @keyframes toastIn { from { opacity:0; transform:translateX(-50%) translateY(-8px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
         select option { background: ${C.card}; color: ${C.text}; }
       `}</style>
+
+      {showSetup && <UserSetupModal onComplete={handleUserSetup} />}
+      {scoreModal && <ScoreModal game={scoreModal.game} result={scoreModal.result} onConfirm={handleScoreConfirm} onCancel={() => setScoreModal(null)} />}
 
       {toast && (
         <div style={{ position: "fixed", top: 14, left: "50%", transform: "translateX(-50%)", background: C.card, border: `2px solid ${toast.color}`, borderRadius: 10, padding: "8px 18px", zIndex: 200, boxShadow: `0 4px 20px ${toast.color}25`, animation: "toastIn 0.15s ease-out" }}>
@@ -659,7 +899,7 @@ export default function App() {
         </div>
       )}
 
-      <AppHeader schedule={schedule} />
+      <AppHeader schedule={schedule} currentUser={currentUser} />
       <InstallBanner />
 
       {!SCRIPT_URL && (
@@ -680,5 +920,3 @@ export default function App() {
     </div>
   );
 }
-
-
