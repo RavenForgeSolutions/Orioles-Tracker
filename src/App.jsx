@@ -794,10 +794,6 @@ function SetupView({ config, setConfig }) {
             "8. Share sheet as 'Anyone with link' (Editor)",
           ].map((s, i) => <div key={i} style={{ fontSize: 11, color: C.dim, padding: "3px 0", fontFamily: mono, lineHeight: 1.5 }}>{s}</div>)}
         </div>
-        <div style={{ background: C.orangeBg, borderRadius: 10, padding: 14, border: `1px solid ${C.orange}25` }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.orange, marginBottom: 3, fontFamily: mono }}>DEMO MODE</div>
-          <div style={{ fontSize: 11, color: C.dim, fontFamily: mono, lineHeight: 1.5 }}>Running with sample data. Connect a Google Sheet to sync across all phones.</div>
-        </div>
       </div>
     </div>
   );
@@ -942,3 +938,4 @@ export default function App() {
     </div>
   );
 }
+
