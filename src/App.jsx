@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 // ── Park Directory ──
 const PARKS = {
@@ -803,6 +803,84 @@ function SetupView({ config, setConfig }) {
   );
 }
 
+// ── Install Banner ──
+function InstallBanner() {
+  const [dismissed, setDismissed] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [isIOS, setIsIOS] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
+
+  useEffect(() => {
+    // Check if already installed as PWA
+    const standalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
+    setIsStandalone(standalone);
+
+    // Check if iOS
+    const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    setIsIOS(ios);
+
+    // Listen for Android install prompt
+    const handler = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener("beforeinstallprompt", handler);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+
+  if (isStandalone || dismissed) return null;
+
+  const handleInstall = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const result = await deferredPrompt.userChoice;
+      if (result.outcome === "accepted") setDismissed(true);
+      setDeferredPrompt(null);
+    }
+  };
+
+  return (
+    <div style={{
+      margin: "8px 14px", padding: "12px 14px", background: C.card, borderRadius: 10,
+      border: `1px solid ${C.orange}40`, position: "relative",
+    }}>
+      <button onClick={() => setDismissed(true)} style={{
+        position: "absolute", top: 8, right: 10, background: "none", border: "none",
+        color: C.dim, fontSize: 16, cursor: "pointer", padding: 0, lineHeight: 1,
+      }}>✕</button>
+      <div style={{ fontSize: 13, fontWeight: 700, color: C.orange, fontFamily: mono, marginBottom: 6 }}>
+        📲 Install This App
+      </div>
+      {deferredPrompt ? (
+        <div>
+          <div style={{ fontSize: 11, color: C.dim, fontFamily: mono, lineHeight: 1.5, marginBottom: 8 }}>
+            Add Orioles Tracker to your home screen for the full app experience.
+          </div>
+          <button onClick={handleInstall} style={{
+            width: "100%", padding: 10, background: C.orange, color: C.black, border: "none",
+            borderRadius: 8, fontWeight: 800, fontSize: 13, cursor: "pointer", fontFamily: mono,
+          }}>Install App</button>
+        </div>
+      ) : isIOS ? (
+        <div style={{ fontSize: 11, color: C.dim, fontFamily: mono, lineHeight: 1.6 }}>
+          <div style={{ marginBottom: 4 }}>To install on your iPhone:</div>
+          <div>1. Tap the <span style={{ color: C.text, fontWeight: 700 }}>⋯ three dots</span> next to the address bar</div>
+          <div>2. Tap <span style={{ color: C.text, fontWeight: 700 }}>Share</span></div>
+          <div>3. Tap <span style={{ color: C.text, fontWeight: 700 }}>Add to Home Screen</span></div>
+          <div>4. Make sure "Open as Web App" is <span style={{ color: C.orange, fontWeight: 700 }}>ON</span></div>
+          <div>5. Tap <span style={{ color: C.text, fontWeight: 700 }}>Add</span></div>
+        </div>
+      ) : (
+        <div style={{ fontSize: 11, color: C.dim, fontFamily: mono, lineHeight: 1.6 }}>
+          <div style={{ marginBottom: 4 }}>To install on your phone:</div>
+          <div>1. Tap the <span style={{ color: C.text, fontWeight: 700 }}>⋮ three dots</span> menu (top right)</div>
+          <div>2. Tap <span style={{ color: C.text, fontWeight: 700 }}>Add to Home Screen</span> or <span style={{ color: C.text, fontWeight: 700 }}>Install App</span></div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main ──
 export default function App() {
   const [tab, setTab] = useState("game");
@@ -852,6 +930,7 @@ export default function App() {
       )}
 
       <AppHeader schedule={schedule} />
+      <InstallBanner />
 
       {tab === "game" && <GameView roster={roster} atBats={atBats} schedule={schedule} gameId={gameId} setGameId={setGameId} onLog={logAtBat} setSchedule={setSchedule} />}
       {tab === "stats" && <StatsView roster={roster} atBats={atBats} schedule={schedule} />}
