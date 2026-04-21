@@ -217,63 +217,7 @@ function UserSetupModal({ onComplete }) {
   );
 }
 
-// ── Score Input Modal ──
-function ScoreModal({ game, result, onConfirm, onCancel }) {
-  const [oriScore, setOriScore] = useState("");
-  const [oppScore, setOppScore] = useState("");
 
-  const handleConfirm = () => {
-    const os = parseInt(oriScore) || 0;
-    const ops = parseInt(oppScore) || 0;
-    onConfirm(result, os, ops);
-  };
-
-  return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-      <div style={{ background: C.card, borderRadius: 14, border: `2px solid ${result === "W" ? C.green : C.danger}`, padding: "24px 20px", maxWidth: 320, width: "100%", boxShadow: `0 0 30px ${result === "W" ? C.green : C.danger}20` }}>
-        <div style={{ textAlign: "center", marginBottom: 16 }}>
-          <div style={{ fontSize: 36, fontWeight: 900, color: result === "W" ? C.green : C.danger, fontFamily: mono }}>{result === "W" ? "WIN" : "LOSS"}</div>
-          <div style={{ fontSize: 12, color: C.dim, fontFamily: mono }}>vs {game.opponent}</div>
-        </div>
-
-        <div style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
-          <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: C.orange, fontFamily: mono, marginBottom: 4 }}>ORIOLES</div>
-            <input type="number" inputMode="numeric" value={oriScore} onChange={(e) => setOriScore(e.target.value)} autoFocus placeholder="0" style={{
-              width: 64, height: 52, background: C.bg, border: `2px solid ${C.orange}50`, borderRadius: 10,
-              color: C.orange, fontSize: 24, fontWeight: 800, fontFamily: mono, textAlign: "center", boxSizing: "border-box",
-            }} />
-          </div>
-          <span style={{ fontSize: 18, color: C.dim, fontFamily: mono, paddingTop: 16 }}>-</span>
-          <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: C.text, fontFamily: mono, marginBottom: 4 }}>{game.opponent.toUpperCase()}</div>
-            <input type="number" inputMode="numeric" value={oppScore} onChange={(e) => setOppScore(e.target.value)} placeholder="0" style={{
-              width: 64, height: 52, background: C.bg, border: `2px solid ${C.border}`, borderRadius: 10,
-              color: C.text, fontSize: 24, fontWeight: 800, fontFamily: mono, textAlign: "center", boxSizing: "border-box",
-            }} />
-          </div>
-        </div>
-
-        <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={onCancel} style={{
-            flex: 1, padding: 11, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8,
-            color: C.dim, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: mono,
-          }}>Cancel</button>
-          <button onClick={handleConfirm} style={{
-            flex: 1, padding: 11, background: result === "W" ? C.green : C.danger, border: "none", borderRadius: 8,
-            color: C.white, fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: mono,
-          }}>Save {result}</button>
-        </div>
-
-        <div style={{ textAlign: "center", marginTop: 10 }}>
-          <button onClick={() => onConfirm(result, null, null)} style={{
-            background: "none", border: "none", color: C.dim, fontSize: 10, cursor: "pointer", fontFamily: mono, textDecoration: "underline",
-          }}>Skip score, just mark {result}</button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ── Format score display ──
 function formatScore(game) {
@@ -332,16 +276,84 @@ function TabBar({ tab, setTab }) {
   );
 }
 
+// ── Result Modal (opened by scoreboard icon) ──
+function ResultModal({ game, onSelect, onClear, onClose }) {
+  const score = formatScore(game);
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: C.card, borderRadius: 14, border: `2px solid ${C.orange}`, padding: "20px", maxWidth: 280, width: "100%", boxShadow: `0 0 30px ${C.orange}20` }}>
+        <div style={{ textAlign: "center", marginBottom: 16 }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: C.orange, fontFamily: mono }}>FINAL RESULT</div>
+          <div style={{ fontSize: 11, color: C.dim, fontFamily: mono, marginTop: 2 }}>
+            Orioles {game.orilesScore ?? 0} - {game.opponent} {game.opponentScore ?? 0}
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+          <button onClick={() => onSelect("W")} style={{
+            flex: 1, padding: "14px 0", borderRadius: 10, fontFamily: mono, fontSize: 18, fontWeight: 900,
+            cursor: "pointer", WebkitTapHighlightColor: "transparent",
+            border: `2px solid ${game.result === "W" ? C.green : C.green + "50"}`,
+            background: game.result === "W" ? C.green : C.greenBg, color: game.result === "W" ? C.black : C.green,
+          }}>{game.result === "W" ? "✓ WIN" : "WIN"}</button>
+          <button onClick={() => onSelect("L")} style={{
+            flex: 1, padding: "14px 0", borderRadius: 10, fontFamily: mono, fontSize: 18, fontWeight: 900,
+            cursor: "pointer", WebkitTapHighlightColor: "transparent",
+            border: `2px solid ${game.result === "L" ? C.danger : C.danger + "50"}`,
+            background: game.result === "L" ? C.danger : C.dangerBg, color: game.result === "L" ? C.white : C.danger,
+          }}>{game.result === "L" ? "✗ LOSS" : "LOSS"}</button>
+        </div>
+
+        {game.result && (
+          <button onClick={onClear} style={{
+            width: "100%", padding: 9, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8,
+            color: C.dim, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: mono,
+          }}>Clear result</button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Game View ──
-function GameView({ roster, atBats, schedule, gameId, setGameId, onLog, onGameResult }) {
+function GameView({ roster, atBats, schedule, gameId, setGameId, onLog, onGameResult, onUpdateScore, onUpdateInning }) {
   const [expanded, setExpanded] = useState(null);
+  const [showResult, setShowResult] = useState(false);
   const game = schedule.find((g) => g.id === gameId);
   const active = roster.filter((p) => p.active && !p.removed).sort((a, b) => a.order - b.order);
   const gABs = atBats.filter((ab) => ab.gameId === gameId);
   const park = game ? PARKS[game.park] : null;
+  const isLocked = game && (game.result === "W" || game.result === "L");
+  const oriScore = game?.orilesScore ?? 0;
+  const oppScore = game?.opponentScore ?? 0;
+  const inning = game?.inning ?? 0;
+
+  const ScoreBtn = ({ onClick, disabled, children }) => (
+    <button onClick={onClick} disabled={disabled} style={{
+      width: 36, height: 36, borderRadius: 8, border: `1px solid ${disabled ? C.border : C.orange}40`,
+      background: disabled ? "transparent" : C.orangeBg, color: disabled ? C.border : C.orange,
+      fontSize: 18, fontWeight: 800, fontFamily: mono, cursor: disabled ? "default" : "pointer",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      WebkitTapHighlightColor: "transparent", opacity: disabled ? 0.3 : 1,
+    }}>{children}</button>
+  );
+
+  const handleResultSelect = (result) => {
+    onGameResult(game.id, result, oriScore, oppScore);
+    setShowResult(false);
+  };
+
+  const handleResultClear = () => {
+    onGameResult(game.id, null, oriScore, oppScore);
+    setShowResult(false);
+  };
 
   return (
     <div>
+      {showResult && game && (
+        <ResultModal game={game} onSelect={handleResultSelect} onClear={handleResultClear} onClose={() => setShowResult(false)} />
+      )}
+
       <div style={{ padding: "10px 14px 0" }}>
         <select value={gameId} onChange={(e) => setGameId(e.target.value)} style={{
           width: "100%", background: C.card, border: `1px solid ${C.orange}40`, borderRadius: 8,
@@ -356,54 +368,87 @@ function GameView({ roster, atBats, schedule, gameId, setGameId, onLog, onGameRe
       </div>
 
       {game && (
-        <div style={{ margin: "0 14px 8px", padding: "12px 14px", background: C.card, borderRadius: 10, border: `1px solid ${C.orange}30`, boxShadow: `inset 0 1px 0 ${C.orange}15` }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-            <div>
-              <span style={{ fontSize: 17, fontWeight: 800, color: C.orange, fontFamily: mono }}>Orioles</span>
-              <span style={{ fontSize: 13, color: C.dim, margin: "0 8px", fontFamily: mono }}>{game.homeAway === "home" ? "vs" : "@"}</span>
-              <span style={{ fontSize: 17, fontWeight: 800, color: C.text, fontFamily: mono }}>{game.opponent}</span>
+        <div style={{ margin: "0 14px 8px", background: C.card, borderRadius: 10, border: `1px solid ${isLocked ? (game.result === "W" ? C.green : C.danger) + "50" : C.orange + "30"}`, boxShadow: `inset 0 1px 0 ${C.orange}15`, overflow: "hidden" }}>
+          {/* Game info row */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 14px 8px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 11, color: C.dim, fontFamily: mono }}>
+                {new Date(game.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })} · {game.time}
+              </span>
+              <span style={{ fontSize: 8, fontWeight: 700, padding: "2px 5px", borderRadius: 3, fontFamily: mono, color: game.homeAway === "home" ? C.orange : "#60a5fa", background: game.homeAway === "home" ? C.orangeBg : "#0d1a2e" }}>{game.homeAway === "home" ? "HOME" : "AWAY"}</span>
             </div>
-            <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 7px", borderRadius: 4, fontFamily: mono, color: game.homeAway === "home" ? C.orange : "#60a5fa", background: game.homeAway === "home" ? C.orangeBg : "#0d1a2e" }}>{game.homeAway === "home" ? "HOME" : "AWAY"}</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              {isLocked && (
+                <span style={{ fontSize: 9, fontWeight: 800, padding: "2px 6px", borderRadius: 4, fontFamily: mono, color: game.result === "W" ? C.green : C.danger, background: game.result === "W" ? C.greenBg : C.dangerBg }}>
+                  {game.result === "W" ? "WIN" : "LOSS"}
+                </span>
+              )}
+              {park && (
+                <button onClick={() => openDir(game.park)} style={{
+                  background: C.orangeBg, border: `1px solid ${C.orange}35`, borderRadius: 6,
+                  padding: "4px 10px", color: C.orange, fontSize: 11, fontWeight: 700, cursor: "pointer",
+                  fontFamily: mono, display: "flex", alignItems: "center", gap: 4,
+                }}>📍</button>
+              )}
+            </div>
           </div>
 
-          {/* Score display */}
-          {game.result && formatScore(game) && (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, padding: "8px 0", marginBottom: 6 }}>
-              <div style={{ textAlign: "center" }}>
-                <div style={{ fontSize: 28, fontWeight: 900, color: game.result === "W" ? C.green : C.danger, fontFamily: mono, lineHeight: 1 }}>{game.orilesScore}</div>
-                <div style={{ fontSize: 8, fontWeight: 700, color: C.orange, fontFamily: mono }}>ORI</div>
+          {/* Scoreboard */}
+          <div style={{ padding: "8px 14px 12px" }}>
+            {/* Orioles score row */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ width: 28, height: 28, borderRadius: "50%", background: C.orange, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 900, color: C.black, fontFamily: mono }}>O</div>
+                <span style={{ fontSize: 15, fontWeight: 800, color: C.orange, fontFamily: mono }}>Orioles</span>
               </div>
-              <div style={{ fontSize: 16, color: C.dim, fontFamily: mono }}>-</div>
-              <div style={{ textAlign: "center" }}>
-                <div style={{ fontSize: 28, fontWeight: 900, color: game.result === "L" ? C.green : C.danger, fontFamily: mono, lineHeight: 1 }}>{game.opponentScore}</div>
-                <div style={{ fontSize: 8, fontWeight: 700, color: C.dim, fontFamily: mono }}>{game.opponent.substring(0, 3).toUpperCase()}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <ScoreBtn onClick={() => onUpdateScore(game.id, "ori", -1)} disabled={isLocked || oriScore <= 0}>−</ScoreBtn>
+                <div style={{ width: 48, textAlign: "center", fontSize: 28, fontWeight: 900, color: C.orange, fontFamily: mono, lineHeight: 1 }}>{oriScore}</div>
+                <ScoreBtn onClick={() => onUpdateScore(game.id, "ori", 1)} disabled={isLocked}>+</ScoreBtn>
               </div>
             </div>
-          )}
 
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: 11, color: C.dim, fontFamily: mono }}>
-              {new Date(game.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })} · {game.time}
-            </span>
-            {park && (
-              <button onClick={() => openDir(game.park)} style={{
-                background: C.orangeBg, border: `1px solid ${C.orange}35`, borderRadius: 6,
-                padding: "4px 10px", color: C.orange, fontSize: 11, fontWeight: 700, cursor: "pointer",
-                fontFamily: mono, display: "flex", alignItems: "center", gap: 4,
-              }}>📍 Directions</button>
-            )}
+            {/* vs divider */}
+            <div style={{ textAlign: "center", fontSize: 10, color: C.dim, fontFamily: mono, margin: "2px 0" }}>vs</div>
+
+            {/* Opponent score row */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ width: 28, height: 28, borderRadius: "50%", background: C.border, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: C.dim, fontFamily: mono }}>{game.opponent.charAt(0)}</div>
+                <span style={{ fontSize: 15, fontWeight: 800, color: C.text, fontFamily: mono }}>{game.opponent}</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <ScoreBtn onClick={() => onUpdateScore(game.id, "opp", -1)} disabled={isLocked || oppScore <= 0}>−</ScoreBtn>
+                <div style={{ width: 48, textAlign: "center", fontSize: 28, fontWeight: 900, color: C.text, fontFamily: mono, lineHeight: 1 }}>{oppScore}</div>
+                <ScoreBtn onClick={() => onUpdateScore(game.id, "opp", 1)} disabled={isLocked}>+</ScoreBtn>
+              </div>
+            </div>
           </div>
-          <div style={{ display: "flex", gap: 6, marginTop: 10, borderTop: `1px solid ${C.border}`, paddingTop: 10 }}>
-            <button onClick={() => onGameResult(game.id, game.result === "W" ? null : "W", game)} style={{
-              flex: 1, padding: "8px", borderRadius: 6, fontFamily: mono, fontSize: 13, fontWeight: 800,
-              cursor: "pointer", border: `2px solid ${game.result === "W" ? C.green : C.border}`,
-              background: game.result === "W" ? C.green : C.bg, color: game.result === "W" ? C.black : C.dim,
-            }}>W{game.result === "W" && formatScore(game) ? ` ${game.orilesScore}-${game.opponentScore}` : ""}</button>
-            <button onClick={() => onGameResult(game.id, game.result === "L" ? null : "L", game)} style={{
-              flex: 1, padding: "8px", borderRadius: 6, fontFamily: mono, fontSize: 13, fontWeight: 800,
-              cursor: "pointer", border: `2px solid ${game.result === "L" ? C.danger : C.border}`,
-              background: game.result === "L" ? C.danger : C.bg, color: game.result === "L" ? C.white : C.dim,
-            }}>L{game.result === "L" && formatScore(game) ? ` ${game.opponentScore}-${game.orilesScore}` : ""}</button>
+
+          {/* Inning tracker + scoreboard icon */}
+          <div style={{ padding: "0 14px 12px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((inn) => (
+                <button key={inn} onClick={() => !isLocked && onUpdateInning(game.id, inning === inn ? 0 : inn)} disabled={isLocked} style={{
+                  width: 28, height: 28, borderRadius: 6, fontFamily: mono, fontSize: 11, fontWeight: 700,
+                  cursor: isLocked ? "default" : "pointer", padding: 0,
+                  border: `1.5px solid ${inning === inn ? C.orange : C.border}`,
+                  background: inning === inn ? C.orange : "transparent",
+                  color: inning === inn ? C.black : (isLocked ? C.border : C.dim),
+                  opacity: isLocked && inning !== inn ? 0.3 : 1,
+                  WebkitTapHighlightColor: "transparent", flexShrink: 0,
+                }}>{inn}</button>
+              ))}
+              {/* Scoreboard icon */}
+              <button onClick={() => setShowResult(true)} style={{
+                width: 34, height: 28, borderRadius: 6, marginLeft: 2, padding: 0, flexShrink: 0,
+                border: `1.5px solid ${isLocked ? (game.result === "W" ? C.green : C.danger) : C.orange}60`,
+                background: isLocked ? (game.result === "W" ? C.greenBg : C.dangerBg) : C.orangeBg,
+                color: isLocked ? (game.result === "W" ? C.green : C.danger) : C.orange,
+                fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                WebkitTapHighlightColor: "transparent",
+              }}>📋</button>
+            </div>
           </div>
         </div>
       )}
@@ -723,8 +768,8 @@ export default function App() {
   const [connected, setConnected] = useState(!!SCRIPT_URL);
   const [currentUser, setCurrentUser] = useState(getUserIdentity);
   const [showSetup, setShowSetup] = useState(!getUserIdentity());
-  const [scoreModal, setScoreModal] = useState(null); // { gameId, result, game }
   const hasAutoAdded = useRef(false);
+  const hasSynced = useRef(false);
 
   const showToast = (msg, color) => { setToast({ msg, color }); setTimeout(() => setToast(null), 1800); };
 
@@ -742,10 +787,12 @@ export default function App() {
           ...g,
           orilesScore: g.orilesScore ?? null,
           opponentScore: g.opponentScore ?? null,
+          inning: g.inning ?? 0,
         })));
       }
       setLastSync(new Date().toLocaleTimeString());
       setConnected(true);
+      hasSynced.current = true;
     }
     setSyncing(false);
   }, []);
@@ -758,21 +805,24 @@ export default function App() {
     }
   }, [loadData]);
 
-  // ── Auto-add user to roster on first setup ──
+  // ── User setup just saves identity, defers roster add ──
   const handleUserSetup = (user) => {
     setCurrentUser(user);
     setShowSetup(false);
+  };
 
-    // Check if user is already on roster
-    const displayName = user.displayName;
+  // ── Auto-add user to roster after first sync completes ──
+  useEffect(() => {
+    if (hasAutoAdded.current || !currentUser || !hasSynced.current) return;
+    const displayName = currentUser.displayName;
     const alreadyOnRoster = roster.some((p) => p.name === displayName);
-    if (!alreadyOnRoster && !hasAutoAdded.current) {
+    if (!alreadyOnRoster) {
       hasAutoAdded.current = true;
       const maxOrder = Math.max(...roster.filter((p) => p.active && !p.removed).map((p) => p.order), -1);
       const newPlayer = {
         id: `p_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`,
         name: displayName,
-        number: user.jersey || "",
+        number: currentUser.jersey || "",
         order: maxOrder + 1,
         active: true,
         removed: false,
@@ -780,8 +830,10 @@ export default function App() {
       setRoster((prev) => [...prev, newPlayer]);
       postToSheet({ action: "addPlayer", ...newPlayer });
       showToast(`${displayName} added to roster!`, C.orange);
+    } else {
+      hasAutoAdded.current = true;
     }
-  };
+  }, [roster, currentUser]);
 
   // ── Action handlers ──
   const logAtBat = (playerId, result) => {
@@ -848,29 +900,42 @@ export default function App() {
     handleUpdatePlayer(id, { removed: false, active: true, order: mx + 1 });
   };
 
-  // ── Game result with score modal ──
-  const handleGameResult = (gId, result, game) => {
-    if (result === null) {
-      // Toggling off: clear result and scores
-      setSchedule((s) => s.map((g) => g.id === gId ? { ...g, result: "", orilesScore: null, opponentScore: null } : g));
-      postToSheet({ action: "updateGame", id: gId, result: "", orilesScore: "", opponentScore: "" });
-      return;
-    }
-    // Open score modal
-    setScoreModal({ gameId: gId, result, game });
+  // ── Score +/- buttons ──
+  const handleUpdateScore = (gId, team, delta) => {
+    setSchedule((s) => s.map((g) => {
+      if (g.id !== gId) return g;
+      if (team === "ori") {
+        const newScore = Math.max(0, (g.orilesScore ?? 0) + delta);
+        postToSheet({ action: "updateGame", id: gId, orilesScore: newScore });
+        return { ...g, orilesScore: newScore };
+      } else {
+        const newScore = Math.max(0, (g.opponentScore ?? 0) + delta);
+        postToSheet({ action: "updateGame", id: gId, opponentScore: newScore });
+        return { ...g, opponentScore: newScore };
+      }
+    }));
   };
 
-  const handleScoreConfirm = (result, oriScore, oppScore) => {
-    const gId = scoreModal.gameId;
-    const updates = {
-      result,
-      orilesScore: oriScore != null ? oriScore : "",
-      opponentScore: oppScore != null ? oppScore : "",
-    };
+  // ── Inning selector ──
+  const handleUpdateInning = (gId, inning) => {
+    setSchedule((s) => s.map((g) => g.id === gId ? { ...g, inning } : g));
+    postToSheet({ action: "updateGame", id: gId, inning });
+  };
+
+  // ── W/L toggle (locks/unlocks score) ──
+  const handleGameResult = (gId, result, oriScore, oppScore) => {
+    if (result === null) {
+      // Unlocking: clear result but keep scores editable
+      setSchedule((s) => s.map((g) => g.id === gId ? { ...g, result: "" } : g));
+      postToSheet({ action: "updateGame", id: gId, result: "" });
+      showToast("Unlocked", C.dim);
+      return;
+    }
+    // Locking: save result with current scores
+    const updates = { result, orilesScore: oriScore, opponentScore: oppScore };
     setSchedule((s) => s.map((g) => g.id === gId ? { ...g, ...updates } : g));
     postToSheet({ action: "updateGame", id: gId, ...updates });
-    setScoreModal(null);
-    showToast(`${result}${oriScore != null ? ` ${oriScore}-${oppScore}` : ""}`, result === "W" ? C.green : C.danger);
+    showToast(`${result} ${oriScore}-${oppScore}`, result === "W" ? C.green : C.danger);
   };
 
   const handleUpdateGame = (gId, updates) => {
@@ -891,7 +956,6 @@ export default function App() {
       `}</style>
 
       {showSetup && <UserSetupModal onComplete={handleUserSetup} />}
-      {scoreModal && <ScoreModal game={scoreModal.game} result={scoreModal.result} onConfirm={handleScoreConfirm} onCancel={() => setScoreModal(null)} />}
 
       {toast && (
         <div style={{ position: "fixed", top: 14, left: "50%", transform: "translateX(-50%)", background: C.card, border: `2px solid ${toast.color}`, borderRadius: 10, padding: "8px 18px", zIndex: 200, boxShadow: `0 4px 20px ${toast.color}25`, animation: "toastIn 0.15s ease-out" }}>
@@ -911,7 +975,7 @@ export default function App() {
 
       {syncing && <div style={{ textAlign: "center", padding: "4px", fontSize: 10, color: C.dim, fontFamily: mono }}>Syncing...</div>}
 
-      {tab === "game" && <GameView roster={roster} atBats={atBats} schedule={schedule} gameId={gameId} setGameId={setGameId} onLog={logAtBat} onGameResult={handleGameResult} />}
+      {tab === "game" && <GameView roster={roster} atBats={atBats} schedule={schedule} gameId={gameId} setGameId={setGameId} onLog={logAtBat} onGameResult={handleGameResult} onUpdateScore={handleUpdateScore} onUpdateInning={handleUpdateInning} />}
       {tab === "stats" && <StatsView roster={roster} atBats={atBats} schedule={schedule} />}
       {tab === "schedule" && <ScheduleView schedule={schedule} onUpdateGame={handleUpdateGame} />}
       {tab === "roster" && <RosterView roster={roster} onAddPlayer={handleAddPlayer} onUpdatePlayer={handleUpdatePlayer} onReorder={handleReorder} onSoftRemove={handleSoftRemove} onRestore={handleRestore} />}
@@ -920,3 +984,4 @@ export default function App() {
     </div>
   );
 }
+
