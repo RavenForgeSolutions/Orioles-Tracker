@@ -135,11 +135,11 @@ async function postToSheet(payload) {
 
 // ── Theme ──
 const C = {
-  bg: "#0d0d0d", card: "#1a1a1a", cardAlt: "#222222", border: "#2e2e2e",
-  text: "#f5f5f5", dim: "#888888",
-  orange: "#f97316", orangeBright: "#fb923c", orangeDim: "#7c2d12",
-  orangeBg: "#1f1208", black: "#0d0d0d", white: "#f5f5f5",
-  danger: "#ef4444", dangerBg: "#3b1111", accent: "#f97316", accentBg: "#1f1208",
+  bg: "#0a0a0a", card: "#141414", cardAlt: "#1c1c1c", border: "#2a2a2a",
+  text: "#f5f5f5", dim: "#777777",
+  orange: "#ff8c00", orangeBright: "#ffa333", orangeDim: "#1a1a1a",
+  orangeBg: "#1c1c1c", black: "#0a0a0a", white: "#f5f5f5",
+  danger: "#ef4444", dangerBg: "#2d0a0a", accent: "#ff8c00", accentBg: "#1c1c1c",
   green: "#22c55e", greenBg: "#052e16",
 };
 const mono = "'IBM Plex Mono', monospace";
@@ -264,7 +264,7 @@ function UserSetupModal({ onComplete, onExisting, roster }) {
 
 
 
-// ── Format score display ──
+
 function formatScore(game) {
   if (game.orilesScore != null && game.opponentScore != null && (game.orilesScore > 0 || game.opponentScore > 0)) {
     return `${game.orilesScore}-${game.opponentScore}`;
@@ -278,7 +278,7 @@ function AppHeader({ schedule, currentUser }) {
   const losses = schedule.filter((g) => g.result === "L").length;
   const hasRecord = wins + losses > 0;
   return (
-    <div style={{ padding: "14px 16px 10px", background: `linear-gradient(135deg, ${C.orangeDim} 0%, ${C.bg} 100%)`, borderBottom: `2px solid ${C.orange}` }}>
+    <div style={{ padding: "14px 16px 10px", background: `linear-gradient(135deg, #1a1206 0%, ${C.bg} 100%)`, borderBottom: `2px solid ${C.orange}` }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <div style={{ width: 36, height: 36, borderRadius: "50%", background: C.orange, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 900, color: C.black, fontFamily: mono, boxShadow: `0 0 12px ${C.orange}40` }}>O</div>
         <div style={{ flex: 1 }}>
@@ -479,7 +479,7 @@ function GameView({ roster, atBats, schedule, gameId, setGameId, onLog, onGameRe
                   cursor: isLocked ? "default" : "pointer", padding: 0,
                   border: `1.5px solid ${inning === inn ? C.orange : C.border}`,
                   background: inning === inn ? C.orange : "transparent",
-                  color: inning === inn ? C.black : (isLocked ? C.border : C.dim),
+                  color: inning === inn ? C.black : (isLocked ? C.border : C.white),
                   opacity: isLocked && inning !== inn ? 0.3 : 1,
                   WebkitTapHighlightColor: "transparent", flexShrink: 0,
                 }}>{inn}</button>
@@ -650,10 +650,10 @@ function ScheduleView({ schedule, onUpdateGame }) {
           return (
             <div key={g.id} style={{ background: C.card, borderRadius: 10, marginBottom: 6, border: `1px solid ${isToday ? C.orange + "80" : ed ? C.orange + "50" : C.border}`, opacity: isPast && !g.result ? 0.4 : 1, overflow: "hidden" }}>
               <div style={{ display: "flex", alignItems: "center", padding: "10px 12px", gap: 10 }}>
-                <div style={{ width: 40, display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, background: C.orangeBg, borderRadius: 6, padding: "4px 0" }}>
+                <div style={{ width: 40, display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, background: "#2a2a2a", borderRadius: 6, padding: "4px 0", border: `1.5px solid ${C.orange}50` }}>
                   <span style={{ fontSize: 8, fontWeight: 700, color: C.orange, fontFamily: mono }}>{d.toLocaleDateString("en-US", { month: "short" }).toUpperCase()}</span>
                   <span style={{ fontSize: 18, fontWeight: 800, color: C.text, fontFamily: mono, lineHeight: 1.1 }}>{d.getDate()}</span>
-                  <span style={{ fontSize: 8, fontWeight: 600, color: C.dim, fontFamily: mono }}>{d.toLocaleDateString("en-US", { weekday: "short" })}</span>
+                  <span style={{ fontSize: 8, fontWeight: 600, color: "#999999", fontFamily: mono }}>{d.toLocaleDateString("en-US", { weekday: "short" })}</span>
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
@@ -880,7 +880,7 @@ export default function App() {
   useEffect(() => {
     loadData();
     if (SCRIPT_URL) {
-      const interval = setInterval(loadData, 15000);
+      const interval = setInterval(loadData, 10000);
       return () => clearInterval(interval);
     }
   }, [loadData]);
