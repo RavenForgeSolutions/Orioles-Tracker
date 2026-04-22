@@ -371,7 +371,7 @@ function GameView({ roster, atBats, schedule, gameId, setGameId, onLog, onGameRe
   const isLocked = game && (game.result === "W" || game.result === "L");
   const oriScore = game?.orilesScore ?? 0;
   const oppScore = game?.opponentScore ?? 0;
-  const inning = game?.inning ?? 0;
+  const innings = game?.innings ? game.innings.split(",").map(Number) : [0,0,0,0,0,0,0,0,0];
 
   const ScoreBtn = ({ onClick, disabled, children }) => (
     <button onClick={onClick} disabled={disabled} style={{
@@ -473,17 +473,26 @@ function GameView({ roster, atBats, schedule, gameId, setGameId, onLog, onGameRe
           {/* Inning tracker + scoreboard icon */}
           <div style={{ padding: "0 14px 12px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((inn) => (
-                <button key={inn} onClick={() => !isLocked && onUpdateInning(game.id, inning === inn ? 0 : inn)} disabled={isLocked} style={{
-                  width: 34, height: 34, borderRadius: 8, fontFamily: mono, fontSize: 13, fontWeight: 700,
-                  cursor: isLocked ? "default" : "pointer", padding: 0,
-                  border: `1.5px solid ${inning === inn ? C.orange : C.border}`,
-                  background: inning === inn ? C.orange : "transparent",
-                  color: inning === inn ? C.black : (isLocked ? C.border : C.white),
-                  opacity: isLocked && inning !== inn ? 0.3 : 1,
-                  WebkitTapHighlightColor: "transparent", flexShrink: 0,
-                }}>{inn}</button>
-              ))}
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((inn) => {
+                const st = innings[inn - 1] || 0; // 0=default, 1=active, 2=finished
+                const isActive = st === 1;
+                const isFinished = st === 2;
+                return (
+                  <button key={inn} onClick={() => !isLocked && onUpdateInning(game.id, inn - 1, st)} disabled={isLocked} style={{
+                    width: 34, height: 34, borderRadius: 8, fontFamily: mono, fontSize: 13, fontWeight: 700,
+                    cursor: isLocked ? "default" : "pointer", padding: 0, position: "relative",
+                    border: `1.5px solid ${isActive ? C.orange : isFinished ? C.dim : C.border}`,
+                    background: isActive ? C.orange : isFinished ? "#222222" : "transparent",
+                    color: isActive ? C.black : isFinished ? "#555555" : (isLocked ? C.border : C.white),
+                    opacity: isLocked && !isActive && !isFinished ? 0.3 : 1,
+                    WebkitTapHighlightColor: "transparent", flexShrink: 0,
+                    overflow: "hidden",
+                  }}>
+                    {inn}
+                    {isFinished && <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, color: C.dim, fontWeight: 900 }}>✕</span>}
+                  </button>
+                );
+              })}
               {/* Scoreboard icon */}
               <button onClick={() => setShowResult(true)} style={{
                 width: 40, height: 34, borderRadius: 8, marginLeft: 2, padding: 0, flexShrink: 0,
@@ -867,7 +876,7 @@ export default function App() {
           ...g,
           orilesScore: g.orilesScore ?? null,
           opponentScore: g.opponentScore ?? null,
-          inning: g.inning ?? 0,
+          innings: g.innings || "0,0,0,0,0,0,0,0,0",
         })));
       }
       setLastSync(new Date().toLocaleTimeString());
@@ -1003,10 +1012,17 @@ export default function App() {
     }));
   };
 
-  // ── Inning selector ──
-  const handleUpdateInning = (gId, inning) => {
-    setSchedule((s) => s.map((g) => g.id === gId ? { ...g, inning } : g));
-    postToSheet({ action: "updateGame", id: gId, inning });
+  // ── Inning selector (cycles: default → active → finished → default) ──
+  const handleUpdateInning = (gId, index, currentState) => {
+    const nextState = (currentState + 1) % 3;
+    setSchedule((s) => s.map((g) => {
+      if (g.id !== gId) return g;
+      const arr = g.innings ? g.innings.split(",").map(Number) : [0,0,0,0,0,0,0,0,0];
+      arr[index] = nextState;
+      const innings = arr.join(",");
+      postToSheet({ action: "updateGame", id: gId, innings });
+      return { ...g, innings };
+    }));
   };
 
   // ── W/L toggle (locks/unlocks score) ──
