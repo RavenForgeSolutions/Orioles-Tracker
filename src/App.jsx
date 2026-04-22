@@ -115,8 +115,11 @@ async function fetchAll() {
   }
 }
 
+let _lastActionTime = 0;
+
 async function postToSheet(payload) {
   if (!SCRIPT_URL) return;
+  _lastActionTime = Date.now();
   try {
     // Attach current user for audit log
     const user = getUserIdentity();
@@ -865,6 +868,8 @@ export default function App() {
   // ── Load data from sheet ──
   const loadData = useCallback(async () => {
     if (!SCRIPT_URL) return;
+    // Skip sync if user made a change within last 5 seconds
+    if (Date.now() - _lastActionTime < 5000) return;
     setSyncing(true);
     const data = await fetchAll();
     if (data) {
