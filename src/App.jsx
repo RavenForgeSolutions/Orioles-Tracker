@@ -159,7 +159,7 @@ function inputStyle() {
 // First-Time User Setup Modal
 // ══════════════════════════════════════════
 function UserSetupModal({ onComplete, onExisting, roster }) {
-  const [setupMode, setSetupMode] = useState("new");
+  const [setupMode, setSetupMode] = useState("existing");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [jersey, setJersey] = useState("");
@@ -201,37 +201,7 @@ function UserSetupModal({ onComplete, onExisting, roster }) {
           <div style={{ fontSize: 12, color: C.dim, fontFamily: mono, marginTop: 4 }}>{setupMode === "new" ? "Join the roster" : "Welcome back"}</div>
         </div>
 
-        {setupMode === "new" ? (
-          <>
-            <div style={{ marginBottom: 12 }}>
-              <label style={{ fontSize: 10, fontWeight: 700, color: C.orange, fontFamily: mono }}>FIRST NAME *</label>
-              <input type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} autoFocus style={{ ...inputStyle(), fontSize: 15, padding: "10px 12px" }} />
-            </div>
-            <div style={{ marginBottom: 12 }}>
-              <label style={{ fontSize: 10, fontWeight: 700, color: C.orange, fontFamily: mono }}>LAST NAME *</label>
-              <input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} style={{ ...inputStyle(), fontSize: 15, padding: "10px 12px" }} />
-            </div>
-            <div style={{ marginBottom: 20 }}>
-              <label style={{ fontSize: 10, fontWeight: 700, color: C.orange, fontFamily: mono }}>JERSEY # *</label>
-              <input type="text" value={jersey} onChange={(e) => setJersey(e.target.value)} maxLength={3} style={{ ...inputStyle(), fontSize: 15, padding: "10px 12px", width: 80 }} />
-            </div>
-            {isValid && (
-              <div style={{ marginBottom: 16, padding: "8px 12px", background: C.orangeBg, borderRadius: 8, border: `1px solid ${C.orange}30` }}>
-                <span style={{ fontSize: 11, color: C.dim, fontFamily: mono }}>You'll appear as: </span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: C.orange, fontFamily: mono }}>
-                  {formatDisplayName(firstName.trim(), lastName.trim())}
-                  <span style={{ opacity: 0.6 }}> #{jersey.trim()}</span>
-                </span>
-              </div>
-            )}
-            <button onClick={handleSubmit} disabled={!isValid} style={{
-              width: "100%", padding: 13, background: isValid ? C.orange : C.border,
-              color: isValid ? C.black : C.dim, border: "none", borderRadius: 10,
-              fontWeight: 800, fontSize: 14, cursor: isValid ? "pointer" : "default",
-              fontFamily: mono, letterSpacing: "0.5px",
-            }}>LET'S GO ⚾</button>
-          </>
-        ) : (
+        {setupMode === "existing" && (
           <>
             <div style={{ marginBottom: 20 }}>
               <label style={{ fontSize: 10, fontWeight: 700, color: C.orange, fontFamily: mono }}>SELECT YOUR NAME</label>
@@ -249,16 +219,6 @@ function UserSetupModal({ onComplete, onExisting, roster }) {
               fontFamily: mono, letterSpacing: "0.5px",
             }}>THAT'S ME ⚾</button>
           </>
-        )}
-
-        {rosterPlayers.length > 0 && (
-          <div style={{ textAlign: "center", marginTop: 14, borderTop: `1px solid ${C.border}`, paddingTop: 14 }}>
-            <span style={{ fontSize: 11, color: C.dim, fontFamily: mono }}>or </span>
-            <button onClick={() => setSetupMode(setupMode === "new" ? "existing" : "new")} style={{
-              background: "none", border: "none", color: C.orange, fontSize: 11, fontWeight: 700,
-              cursor: "pointer", fontFamily: mono, textDecoration: "underline", padding: 0,
-            }}>{setupMode === "new" ? "I'm already on the roster" : "I'm new, add me"}</button>
-          </div>
         )}
       </div>
     </div>
@@ -522,7 +482,7 @@ function GameView({ roster, atBats, schedule, gameId, setGameId, onLog, onGameRe
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: C.text, fontFamily: sans, display: "flex", alignItems: "center", gap: 5 }}>
                     {p.name}
-                    {p.number && <span style={{ fontSize: 10, fontWeight: 700, color: C.orange, fontFamily: mono, opacity: 0.6 }}>#{p.number}</span>}
+                    {p.number !== undefined && p.number !== "" && <span style={{ fontSize: 10, fontWeight: 700, color: C.orange, fontFamily: mono, opacity: 0.6 }}>#{p.number}</span>}
                   </div>
                   <div style={{ display: "flex", gap: 4, marginTop: 3, flexWrap: "wrap" }}>
                     {pABs.map((ab, i) => { const o = getO(ab.result); return <span key={i} style={{ fontSize: 9, fontWeight: 700, color: o.color, background: `${o.color}15`, padding: "1px 5px", borderRadius: 3, fontFamily: mono }}>{ab.result}</span>; })}
@@ -716,6 +676,7 @@ function RosterView({ roster, onAddPlayer, onUpdatePlayer, onReorder, onSoftRemo
   const [editName, setEditName] = useState("");
   const [editNumber, setEditNumber] = useState("");
   const [confirmRemove, setConfirmRemove] = useState(null);
+  const [moveFrom, setMoveFrom] = useState(null); // index of player being moved
   const active = roster.filter((p) => p.active && !p.removed).sort((a, b) => a.order - b.order);
   const inactive = roster.filter((p) => !p.active && !p.removed);
   const removed = roster.filter((p) => p.removed);
@@ -734,64 +695,95 @@ function RosterView({ roster, onAddPlayer, onUpdatePlayer, onReorder, onSoftRemo
     setEditingId(null);
   };
 
-  const PlayerRow = ({ p, i, isActive, isRemoved }) => (
-    <div style={{ background: C.card, borderRadius: 8, marginBottom: 4, border: `1px solid ${C.border}`, overflow: "hidden", opacity: isRemoved ? 0.35 : isActive ? 1 : 0.4 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 10px" }}>
-        {isActive && (
-          <>
-            <div style={{ display: "flex", flexDirection: "column" }}>
-              <button onClick={() => i > 0 && onReorder(i, i - 1)} disabled={i === 0} style={{ background: "none", border: "none", color: i === 0 ? C.border : C.orange, cursor: i === 0 ? "default" : "pointer", fontSize: 10, padding: 0, lineHeight: 1 }}>▲</button>
-              <button onClick={() => i < active.length - 1 && onReorder(i, i + 1)} disabled={i === active.length - 1} style={{ background: "none", border: "none", color: i === active.length - 1 ? C.border : C.orange, cursor: i === active.length - 1 ? "default" : "pointer", fontSize: 10, padding: 0, lineHeight: 1 }}>▼</button>
+  const handleTapToMove = (i) => {
+    if (editingId || confirmRemove) return;
+    if (moveFrom === null) {
+      setMoveFrom(i);
+    } else if (moveFrom === i) {
+      setMoveFrom(null); // deselect
+    } else {
+      onReorder(moveFrom, i);
+      setMoveFrom(null);
+    }
+  };
+
+  const isMoving = moveFrom !== null;
+
+  const PlayerRow = ({ p, i, isActive, isRemoved }) => {
+    const isSelected = isActive && moveFrom === i;
+    const isTarget = isActive && isMoving && moveFrom !== i;
+    return (
+      <div style={{
+        background: isSelected ? C.orangeBg : C.card, borderRadius: 8, marginBottom: 4,
+        border: `1px solid ${isSelected ? C.orange : isTarget ? C.orange + "40" : C.border}`,
+        overflow: "hidden", opacity: isRemoved ? 0.35 : isActive ? 1 : 0.4,
+        transition: "border-color 0.15s, background 0.15s",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 10px" }}>
+          {isActive && (
+            <div onClick={() => handleTapToMove(i)} style={{
+              width: 28, height: 28, borderRadius: "50%",
+              background: isSelected ? C.orange : isTarget ? C.orange + "30" : C.orange,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 11, fontWeight: 800, color: C.black, fontFamily: mono, flexShrink: 0,
+              cursor: "pointer", WebkitTapHighlightColor: "transparent",
+              border: isSelected ? `2px solid ${C.white}` : isTarget ? `2px dashed ${C.orange}` : "none",
+            }}>{isSelected ? "↕" : i + 1}</div>
+          )}
+          {editingId === p.id ? (
+            <div style={{ flex: 1, display: "flex", gap: 4, alignItems: "center" }}>
+              <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && saveEdit(p.id)} autoFocus placeholder="Name" style={{ flex: 1, background: C.bg, border: `1px solid ${C.orange}50`, borderRadius: 4, color: C.text, padding: "4px 8px", fontSize: 13, fontFamily: sans, boxSizing: "border-box" }} />
+              <input type="text" value={editNumber} onChange={(e) => setEditNumber(e.target.value)} onKeyDown={(e) => e.key === "Enter" && saveEdit(p.id)} placeholder="#" style={{ width: 40, background: C.bg, border: `1px solid ${C.orange}50`, borderRadius: 4, color: C.orange, padding: "4px 6px", fontSize: 13, fontFamily: mono, textAlign: "center", boxSizing: "border-box" }} />
+              <button onClick={() => saveEdit(p.id)} style={{ background: C.orange, border: "none", borderRadius: 4, padding: "4px 8px", color: C.black, fontSize: 9, fontWeight: 700, cursor: "pointer", fontFamily: mono }}>SAVE</button>
+              <button onClick={() => setEditingId(null)} style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 4, padding: "4px 8px", color: C.dim, fontSize: 9, fontWeight: 700, cursor: "pointer", fontFamily: mono }}>✕</button>
             </div>
-            <div style={{ width: 22, height: 22, borderRadius: "50%", background: C.orange, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, color: C.black, fontFamily: mono, flexShrink: 0 }}>{i + 1}</div>
-          </>
-        )}
-        {editingId === p.id ? (
-          <div style={{ flex: 1, display: "flex", gap: 4, alignItems: "center" }}>
-            <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && saveEdit(p.id)} autoFocus placeholder="Name" style={{ flex: 1, background: C.bg, border: `1px solid ${C.orange}50`, borderRadius: 4, color: C.text, padding: "4px 8px", fontSize: 13, fontFamily: sans, boxSizing: "border-box" }} />
-            <input type="text" value={editNumber} onChange={(e) => setEditNumber(e.target.value)} onKeyDown={(e) => e.key === "Enter" && saveEdit(p.id)} placeholder="#" style={{ width: 40, background: C.bg, border: `1px solid ${C.orange}50`, borderRadius: 4, color: C.orange, padding: "4px 6px", fontSize: 13, fontFamily: mono, textAlign: "center", boxSizing: "border-box" }} />
-            <button onClick={() => saveEdit(p.id)} style={{ background: C.orange, border: "none", borderRadius: 4, padding: "4px 8px", color: C.black, fontSize: 9, fontWeight: 700, cursor: "pointer", fontFamily: mono }}>SAVE</button>
-            <button onClick={() => setEditingId(null)} style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 4, padding: "4px 8px", color: C.dim, fontSize: 9, fontWeight: 700, cursor: "pointer", fontFamily: mono }}>✕</button>
-          </div>
-        ) : (
-          <span onClick={() => { setEditingId(p.id); setEditName(p.name); setEditNumber(p.number || ""); }} style={{ flex: 1, fontSize: 13, fontWeight: 700, color: C.text, fontFamily: sans, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
-            {p.name}
-            {p.number && <span style={{ fontSize: 12, fontWeight: 700, color: C.orange, fontFamily: mono, opacity: 0.6 }}>#{p.number}</span>}
-          </span>
-        )}
-        {!isRemoved && editingId !== p.id && (
-          <>
-            {isActive ? (
-              <button onClick={() => onUpdatePlayer(p.id, { active: false })} style={{ background: C.dangerBg, border: `1px solid ${C.danger}30`, borderRadius: 6, padding: "4px 8px", color: C.danger, fontSize: 9, fontWeight: 700, cursor: "pointer", fontFamily: mono }}>OUT</button>
-            ) : (
-              <button onClick={() => onUpdatePlayer(p.id, { active: true })} style={{ background: C.orangeBg, border: `1px solid ${C.orange}30`, borderRadius: 6, padding: "4px 10px", color: C.orange, fontSize: 9, fontWeight: 700, cursor: "pointer", fontFamily: mono }}>ADD IN</button>
-            )}
-            <button onClick={() => setConfirmRemove(confirmRemove === p.id ? null : p.id)} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 6, padding: "4px 6px", color: C.dim, fontSize: 11, cursor: "pointer" }}>🗑</button>
-          </>
-        )}
-        {isRemoved && editingId !== p.id && <button onClick={() => onRestore(p.id)} style={{ background: C.orangeBg, border: `1px solid ${C.orange}30`, borderRadius: 6, padding: "4px 10px", color: C.orange, fontSize: 9, fontWeight: 700, cursor: "pointer", fontFamily: mono }}>RESTORE</button>}
-      </div>
-      {confirmRemove === p.id && (
-        <div style={{ padding: "8px 10px", borderTop: `1px solid ${C.danger}30`, background: C.dangerBg, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <span style={{ fontSize: 10, color: C.danger, fontFamily: mono, fontWeight: 600 }}>Remove from roster? Stats are kept.</span>
-          <div style={{ display: "flex", gap: 6 }}>
-            <button onClick={() => { onSoftRemove(p.id); setConfirmRemove(null); }} style={{ background: C.danger, border: "none", borderRadius: 4, padding: "4px 12px", color: C.white, fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: mono }}>YES</button>
-            <button onClick={() => setConfirmRemove(null)} style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 4, padding: "4px 10px", color: C.dim, fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: mono }}>NO</button>
-          </div>
+          ) : (
+            <span onClick={() => { if (isMoving) return; setEditingId(p.id); setEditName(p.name); setEditNumber(p.number || ""); }} style={{ flex: 1, fontSize: 13, fontWeight: 700, color: isSelected ? C.orange : C.text, fontFamily: sans, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+              {p.name}
+              {p.number !== undefined && p.number !== "" && <span style={{ fontSize: 12, fontWeight: 700, color: C.orange, fontFamily: mono, opacity: 0.6 }}>#{p.number}</span>}
+            </span>
+          )}
+          {!isRemoved && editingId !== p.id && !isMoving && (
+            <>
+              {isActive ? (
+                <button onClick={() => onUpdatePlayer(p.id, { active: false })} style={{ background: C.dangerBg, border: `1px solid ${C.danger}30`, borderRadius: 6, padding: "4px 8px", color: C.danger, fontSize: 9, fontWeight: 700, cursor: "pointer", fontFamily: mono }}>OUT</button>
+              ) : (
+                <button onClick={() => onUpdatePlayer(p.id, { active: true })} style={{ background: C.orangeBg, border: `1px solid ${C.orange}30`, borderRadius: 6, padding: "4px 10px", color: C.orange, fontSize: 9, fontWeight: 700, cursor: "pointer", fontFamily: mono }}>ADD IN</button>
+              )}
+              <button onClick={() => setConfirmRemove(confirmRemove === p.id ? null : p.id)} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 6, padding: "4px 6px", color: C.dim, fontSize: 11, cursor: "pointer" }}>🗑</button>
+            </>
+          )}
+          {isRemoved && editingId !== p.id && <button onClick={() => onRestore(p.id)} style={{ background: C.orangeBg, border: `1px solid ${C.orange}30`, borderRadius: 6, padding: "4px 10px", color: C.orange, fontSize: 9, fontWeight: 700, cursor: "pointer", fontFamily: mono }}>RESTORE</button>}
         </div>
-      )}
-    </div>
-  );
+        {confirmRemove === p.id && (
+          <div style={{ padding: "8px 10px", borderTop: `1px solid ${C.danger}30`, background: C.dangerBg, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span style={{ fontSize: 10, color: C.danger, fontFamily: mono, fontWeight: 600 }}>Remove from roster? Stats are kept.</span>
+            <div style={{ display: "flex", gap: 6 }}>
+              <button onClick={() => { onSoftRemove(p.id); setConfirmRemove(null); }} style={{ background: C.danger, border: "none", borderRadius: 4, padding: "4px 12px", color: C.white, fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: mono }}>YES</button>
+              <button onClick={() => setConfirmRemove(null)} style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 4, padding: "4px 10px", color: C.dim, fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: mono }}>NO</button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div>
-      <div style={{ padding: "10px 14px 8px" }}><p style={{ margin: 0, fontSize: 11, color: C.dim, fontFamily: mono }}>Add, remove, or reorder players</p></div>
+      <div style={{ padding: "10px 14px 8px" }}>
+        <p style={{ margin: 0, fontSize: 11, color: C.dim, fontFamily: mono }}>
+          {isMoving ? "Tap a spot to move player there" : "Tap a number to reorder"}
+        </p>
+      </div>
       <div style={{ padding: "0 14px 80px" }}>
         <div style={{ display: "flex", gap: 6, marginBottom: 12, background: C.card, borderRadius: 8, padding: "8px 10px", border: `1px solid ${C.orange}30` }}>
           <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addPlayer()} placeholder="Player name..." style={{ flex: 1, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 6, color: C.text, padding: "8px 10px", fontSize: 13, fontFamily: sans, boxSizing: "border-box" }} />
           <input type="text" value={newNumber} onChange={(e) => setNewNumber(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addPlayer()} placeholder="#" style={{ width: 44, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 6, color: C.orange, padding: "8px 6px", fontSize: 13, fontFamily: mono, textAlign: "center", boxSizing: "border-box" }} />
           <button onClick={addPlayer} style={{ background: C.orange, border: "none", borderRadius: 6, padding: "8px 14px", color: C.black, fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: mono, opacity: newName.trim() ? 1 : 0.4 }}>+ ADD</button>
         </div>
+        {isMoving && (
+          <button onClick={() => setMoveFrom(null)} style={{ width: "100%", padding: 8, marginBottom: 8, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 6, color: C.dim, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: mono }}>Cancel move</button>
+        )}
         <div style={{ fontSize: 10, fontWeight: 700, color: C.orange, marginBottom: 6, fontFamily: mono }}>ACTIVE ({active.length})</div>
         {active.map((p, i) => <PlayerRow key={p.id} p={p} i={i} isActive={true} isRemoved={false} />)}
         {inactive.length > 0 && (<><div style={{ fontSize: 10, fontWeight: 700, color: C.dim, margin: "14px 0 6px", fontFamily: mono }}>NOT PLAYING ({inactive.length})</div>{inactive.map((p) => <PlayerRow key={p.id} p={p} i={null} isActive={false} isRemoved={false} />)}</>)}
@@ -876,13 +868,18 @@ export default function App() {
       if (data.roster && data.roster.length > 0) setRoster(data.roster);
       if (data.atBats) setAtBats(data.atBats);
       if (data.schedule && data.schedule.length > 0) {
-        // Merge score fields from sheet data
-        setSchedule(data.schedule.map((g) => ({
+        const merged = data.schedule.map((g) => ({
           ...g,
           orilesScore: g.orilesScore ?? null,
           opponentScore: g.opponentScore ?? null,
           innings: g.innings || "0,0,0,0,0,0,0,0,0",
-        })));
+        }));
+        setSchedule(merged);
+        // On first sync, default to next unplayed game
+        if (!hasSynced.current) {
+          const next = merged.find((g) => !g.result);
+          if (next) setGameId(next.id);
+        }
       }
       setLastSync(new Date().toLocaleTimeString());
       setConnected(true);
@@ -1092,3 +1089,4 @@ export default function App() {
     </div>
   );
 }
+
