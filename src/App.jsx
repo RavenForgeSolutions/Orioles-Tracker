@@ -719,41 +719,40 @@ function RosterView({ roster, onAddPlayer, onUpdatePlayer, onReorder, onSoftRemo
         overflow: "hidden", opacity: isRemoved ? 0.35 : isActive ? 1 : 0.4,
         transition: "border-color 0.15s, background 0.15s",
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 10px" }}>
+        <div onClick={() => isActive && handleTapToMove(i)} style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 10px", cursor: isActive ? "pointer" : "default", WebkitTapHighlightColor: "transparent" }}>
           {isActive && (
-            <div onClick={() => handleTapToMove(i)} style={{
+            <div style={{
               width: 28, height: 28, borderRadius: "50%",
               background: isSelected ? C.orange : isTarget ? C.orange + "30" : C.orange,
               display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: 11, fontWeight: 800, color: C.black, fontFamily: mono, flexShrink: 0,
-              cursor: "pointer", WebkitTapHighlightColor: "transparent",
               border: isSelected ? `2px solid ${C.white}` : isTarget ? `2px dashed ${C.orange}` : "none",
             }}>{isSelected ? "↕" : i + 1}</div>
           )}
           {editingId === p.id ? (
-            <div style={{ flex: 1, display: "flex", gap: 4, alignItems: "center" }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ flex: 1, display: "flex", gap: 4, alignItems: "center" }}>
               <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && saveEdit(p.id)} autoFocus placeholder="Name" style={{ flex: 1, background: C.bg, border: `1px solid ${C.orange}50`, borderRadius: 4, color: C.text, padding: "4px 8px", fontSize: 13, fontFamily: sans, boxSizing: "border-box" }} />
               <input type="text" value={editNumber} onChange={(e) => setEditNumber(e.target.value)} onKeyDown={(e) => e.key === "Enter" && saveEdit(p.id)} placeholder="#" style={{ width: 40, background: C.bg, border: `1px solid ${C.orange}50`, borderRadius: 4, color: C.orange, padding: "4px 6px", fontSize: 13, fontFamily: mono, textAlign: "center", boxSizing: "border-box" }} />
               <button onClick={() => saveEdit(p.id)} style={{ background: C.orange, border: "none", borderRadius: 4, padding: "4px 8px", color: C.black, fontSize: 9, fontWeight: 700, cursor: "pointer", fontFamily: mono }}>SAVE</button>
               <button onClick={() => setEditingId(null)} style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 4, padding: "4px 8px", color: C.dim, fontSize: 9, fontWeight: 700, cursor: "pointer", fontFamily: mono }}>✕</button>
             </div>
           ) : (
-            <span onClick={() => { if (isMoving) return; setEditingId(p.id); setEditName(p.name); setEditNumber(p.number || ""); }} style={{ flex: 1, fontSize: 13, fontWeight: 700, color: isSelected ? C.orange : C.text, fontFamily: sans, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: isSelected ? C.orange : C.text, fontFamily: sans, display: "flex", alignItems: "center", gap: 6 }}>
               {p.name}
               {p.number !== undefined && p.number !== "" && <span style={{ fontSize: 12, fontWeight: 700, color: C.orange, fontFamily: mono, opacity: 0.6 }}>#{p.number}</span>}
             </span>
           )}
           {!isRemoved && editingId !== p.id && !isMoving && (
-            <>
+            <div onClick={(e) => e.stopPropagation()} style={{ display: "flex", gap: 4, alignItems: "center" }}>
               {isActive ? (
                 <button onClick={() => onUpdatePlayer(p.id, { active: false })} style={{ background: C.dangerBg, border: `1px solid ${C.danger}30`, borderRadius: 6, padding: "4px 8px", color: C.danger, fontSize: 9, fontWeight: 700, cursor: "pointer", fontFamily: mono }}>OUT</button>
               ) : (
                 <button onClick={() => onUpdatePlayer(p.id, { active: true })} style={{ background: C.orangeBg, border: `1px solid ${C.orange}30`, borderRadius: 6, padding: "4px 10px", color: C.orange, fontSize: 9, fontWeight: 700, cursor: "pointer", fontFamily: mono }}>ADD IN</button>
               )}
               <button onClick={() => setConfirmRemove(confirmRemove === p.id ? null : p.id)} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 6, padding: "4px 6px", color: C.dim, fontSize: 11, cursor: "pointer" }}>🗑</button>
-            </>
+            </div>
           )}
-          {isRemoved && editingId !== p.id && <button onClick={() => onRestore(p.id)} style={{ background: C.orangeBg, border: `1px solid ${C.orange}30`, borderRadius: 6, padding: "4px 10px", color: C.orange, fontSize: 9, fontWeight: 700, cursor: "pointer", fontFamily: mono }}>RESTORE</button>}
+          {isRemoved && editingId !== p.id && <div onClick={(e) => e.stopPropagation()}><button onClick={() => onRestore(p.id)} style={{ background: C.orangeBg, border: `1px solid ${C.orange}30`, borderRadius: 6, padding: "4px 10px", color: C.orange, fontSize: 9, fontWeight: 700, cursor: "pointer", fontFamily: mono }}>RESTORE</button></div>}
         </div>
         {confirmRemove === p.id && (
           <div style={{ padding: "8px 10px", borderTop: `1px solid ${C.danger}30`, background: C.dangerBg, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -772,7 +771,7 @@ function RosterView({ roster, onAddPlayer, onUpdatePlayer, onReorder, onSoftRemo
     <div>
       <div style={{ padding: "10px 14px 8px" }}>
         <p style={{ margin: 0, fontSize: 11, color: C.dim, fontFamily: mono }}>
-          {isMoving ? "Tap a spot to move player there" : "Tap a number to reorder"}
+          {isMoving ? "Tap a player to swap positions" : "Tap a player to reorder"}
         </p>
       </div>
       <div style={{ padding: "0 14px 80px" }}>
@@ -1089,4 +1088,5 @@ export default function App() {
     </div>
   );
 }
+
 
