@@ -66,11 +66,14 @@ function calcStats(abs) {
   const bb = abs.filter((a) => a.result === "BB").length;
   const hbp = abs.filter((a) => a.result === "HBP").length;
   const k = abs.filter((a) => a.result === "K").length;
+  const sac = abs.filter((a) => a.result === "SAC").length;
+  const fc = abs.filter((a) => a.result === "FC").length;
+  const roe = abs.filter((a) => a.result === "E").length;
   const tb = s + d * 2 + t * 3 + hr * 4;
   const avg = atbats > 0 ? hits / atbats : 0;
   const obp = pa > 0 ? (hits + bb + hbp) / pa : 0;
   const slg = atbats > 0 ? tb / atbats : 0;
-  return { pa, atbats, hits, s, d, t, hr, bb, hbp, k, tb, avg, obp, slg, ops: obp + slg };
+  return { pa, atbats, hits, s, d, t, hr, bb, hbp, k, sac, fc, roe, tb, avg, obp, slg, ops: obp + slg };
 }
 
 function f3(v) { if (v === 0) return ".000"; const s = v.toFixed(3); return v >= 1 ? s : s.slice(1); }
@@ -525,11 +528,106 @@ function GameView({ roster, atBats, schedule, gameId, setGameId, onLog, onGameRe
   );
 }
 
+// ── Player Detail Bottom Sheet ──
+function PlayerDetailSheet({ player, atBats, schedule, initialMode, initialGame, onClose }) {
+  const [sheetMode, setSheetMode] = useState(initialMode || "season");
+  const [sheetGame, setSheetGame] = useState(initialGame || "");
+
+  const filtered = sheetMode === "season" ? atBats.filter((ab) => ab.playerId === player.id) : atBats.filter((ab) => ab.playerId === player.id && ab.gameId === sheetGame);
+  const s = calcStats(filtered);
+  const cardBg = "#383838";
+  const boxBg = "#252525";
+
+  return (
+    <>
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 400, background: "rgba(0,0,0,0.6)" }} />
+      <div style={{
+        position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 500,
+        background: cardBg, borderRadius: "16px 16px 0 0", border: `2px solid ${C.orange}`,
+        borderBottom: "none", maxWidth: 480, margin: "0 auto",
+        boxShadow: `0 -10px 40px rgba(0,0,0,0.4)`,
+        animation: "sheetUp 0.25s ease-out",
+        paddingBottom: "env(safe-area-inset-bottom, 16px)",
+        maxHeight: "85vh", overflowY: "auto",
+      }}>
+        <div style={{ width: 40, height: 4, background: "#555", borderRadius: 2, margin: "10px auto 0", position: "sticky", top: 0 }} />
+        <div style={{ padding: 16 }}>
+          {/* Header */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+            <div>
+              <span style={{ fontSize: 18, fontWeight: 800, color: C.orange, fontFamily: mono }}>{player.name}</span>
+              {player.number !== undefined && player.number !== "" && <span style={{ fontSize: 14, fontWeight: 700, color: "#999", fontFamily: mono, marginLeft: 8 }}>#{player.number}</span>}
+            </div>
+            <button onClick={onClose} style={{ background: "none", border: "none", color: "#999", fontSize: 18, cursor: "pointer", padding: 4 }}>✕</button>
+          </div>
+
+          {/* Season / Game toggle */}
+          <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
+            <button onClick={() => setSheetMode("season")} style={{ flex: 1, padding: 7, background: sheetMode === "season" ? C.orange : boxBg, color: sheetMode === "season" ? C.black : "#999", border: `1px solid ${sheetMode === "season" ? C.orange : "#444"}`, borderRadius: 6, fontWeight: 700, fontSize: 11, cursor: "pointer", fontFamily: mono }}>Season</button>
+            <select value={sheetGame} onChange={(e) => { setSheetMode("game"); setSheetGame(e.target.value); }} style={{ flex: 1.3, padding: 7, background: sheetMode === "game" ? C.orange : boxBg, color: sheetMode === "game" ? C.black : "#999", border: `1px solid ${sheetMode === "game" ? C.orange : "#444"}`, borderRadius: 6, fontWeight: 700, fontSize: 11, fontFamily: mono }}>
+              <option value="" disabled>By game...</option>
+              {schedule.map((g) => { const dt = new Date(g.date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }); return <option key={g.id} value={g.id}>G{g.game} {dt} vs {g.opponent}</option>; })}
+            </select>
+          </div>
+
+          {/* Slash line */}
+          <div style={{ display: "flex", gap: 8, marginBottom: 14, justifyContent: "center" }}>
+            {[["AVG", f3(s.avg), C.orange], ["OBP", f3(s.obp), C.orangeBright], ["SLG", f3(s.slg), "#fbbf24"], ["OPS", f3(s.ops), s.ops >= .8 ? C.orange : C.text]].map(([l, v, c]) => (
+              <div key={l} style={{ background: boxBg, borderRadius: 8, padding: "8px 12px", display: "flex", flexDirection: "column", alignItems: "center", minWidth: 56, border: `1px solid #444` }}>
+                <span style={{ fontSize: 18, fontWeight: 800, color: c, fontFamily: mono }}>{v}</span>
+                <span style={{ fontSize: 9, color: "#999", fontWeight: 700, fontFamily: mono }}>{l}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Hitting */}
+          <div style={{ fontSize: 9, fontWeight: 700, color: "#999", fontFamily: mono, marginBottom: 6 }}>HITTING</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 5, marginBottom: 12 }}>
+            {[["1B", s.s, "#4ade80"], ["2B", s.d, "#60a5fa"], ["3B", s.t, "#c084fc"], ["HR", s.hr, C.orange], ["H", s.hits, C.white]].map(([l, v, c]) => (
+              <div key={l} style={{ background: boxBg, borderRadius: 6, padding: "8px 4px", textAlign: "center", border: `1px solid #444` }}>
+                <div style={{ fontSize: 16, fontWeight: 800, color: c, fontFamily: mono }}>{v}</div>
+                <div style={{ fontSize: 8, color: "#999", fontWeight: 700, fontFamily: mono }}>{l}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Plate discipline */}
+          <div style={{ fontSize: 9, fontWeight: 700, color: "#999", fontFamily: mono, marginBottom: 6 }}>PLATE DISCIPLINE</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 5, marginBottom: 12 }}>
+            {[["BB", s.bb, "#fbbf24"], ["HBP", s.hbp, "#fb923c"], ["K", s.k, "#9ca3af"], ["SAC", s.sac, "#d4d4d8"]].map(([l, v, c]) => (
+              <div key={l} style={{ background: boxBg, borderRadius: 6, padding: "8px 4px", textAlign: "center", border: `1px solid #444` }}>
+                <div style={{ fontSize: 16, fontWeight: 800, color: c, fontFamily: mono }}>{v}</div>
+                <div style={{ fontSize: 8, color: "#999", fontWeight: 700, fontFamily: mono }}>{l}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Totals */}
+          <div style={{ fontSize: 9, fontWeight: 700, color: "#999", fontFamily: mono, marginBottom: 6 }}>TOTALS</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 5 }}>
+            {[["PA", s.pa, "#bbb"], ["AB", s.atbats, "#bbb"], ["TB", s.tb, C.orangeBright], ["FC", s.fc, "#a1a1aa"], ["ROE", s.roe, "#fbbf24"]].map(([l, v, c]) => (
+              <div key={l} style={{ background: boxBg, borderRadius: 6, padding: "8px 4px", textAlign: "center", border: `1px solid #444` }}>
+                <div style={{ fontSize: 16, fontWeight: 800, color: c, fontFamily: mono }}>{v}</div>
+                <div style={{ fontSize: 8, color: "#999", fontWeight: 700, fontFamily: mono }}>{l}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* No data message */}
+          {filtered.length === 0 && (
+            <div style={{ textAlign: "center", padding: "16px 0 0", color: "#999", fontSize: 11, fontFamily: mono }}>No at-bats {sheetMode === "game" ? "this game" : "this season"}</div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ── Stats View ──
 function StatsView({ roster, atBats, schedule }) {
   const [mode, setMode] = useState("season");
   const [selGame, setSelGame] = useState("");
-  const [selPlayer, setSelPlayer] = useState(null); // null = team, or player id
+  const [detailPlayer, setDetailPlayer] = useState(null);
   const filtered = mode === "season" ? atBats : atBats.filter((ab) => ab.gameId === selGame);
   const team = calcStats(filtered);
   const players = roster.map((p) => {
@@ -538,67 +636,44 @@ function StatsView({ roster, atBats, schedule }) {
     return { ...p, st: calcStats(pABs) };
   }).filter(Boolean).sort((a, b) => b.st.avg - a.st.avg);
 
-  const selP = selPlayer ? players.find((p) => p.id === selPlayer) : null;
-  const display = selP ? selP.st : team;
-  const displayLabel = selP ? selP.name : "TEAM";
-
   return (
     <div>
+      {detailPlayer && <PlayerDetailSheet player={detailPlayer} atBats={atBats} schedule={schedule} initialMode={mode} initialGame={selGame} onClose={() => setDetailPlayer(null)} />}
+
       <div style={{ padding: "10px 14px 8px" }}>
         <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
           <button onClick={() => setMode("season")} style={{ flex: 1, padding: 8, background: mode === "season" ? C.orange : C.card, color: mode === "season" ? C.black : C.dim, border: `1px solid ${mode === "season" ? C.orange : C.border}`, borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: mono }}>Season</button>
-          <select value={selGame} onChange={(e) => { setMode("game"); setSelGame(e.target.value); setSelPlayer(null); }} style={{ flex: 1.3, padding: 8, background: mode === "game" ? C.orange : C.card, color: mode === "game" ? C.black : C.dim, border: `1px solid ${mode === "game" ? C.orange : C.border}`, borderRadius: 6, fontWeight: 700, fontSize: 12, fontFamily: mono }}>
+          <select value={selGame} onChange={(e) => { setMode("game"); setSelGame(e.target.value); }} style={{ flex: 1.3, padding: 8, background: mode === "game" ? C.orange : C.card, color: mode === "game" ? C.black : C.dim, border: `1px solid ${mode === "game" ? C.orange : C.border}`, borderRadius: 6, fontWeight: 700, fontSize: 12, fontFamily: mono }}>
             <option value="" disabled>By game...</option>
             {schedule.map((g) => { const dt = new Date(g.date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }); return <option key={g.id} value={g.id}>G{g.game} {dt} vs {g.opponent}</option>; })}
           </select>
-        </div>
-
-        {/* Stat display header */}
-        <div style={{ textAlign: "center", marginBottom: 4 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, color: selP ? C.orange : C.dim, fontFamily: mono }}>{displayLabel}</span>
-        </div>
-
-        <div style={{ background: C.card, borderRadius: 10, padding: 12, marginBottom: 10, border: `1px solid ${selP ? C.orange + "50" : C.orange + "25"}`, display: "flex", gap: 5, flexWrap: "wrap", justifyContent: "center" }}>
-          {[["AVG", f3(display.avg), C.orange], ["OBP", f3(display.obp), C.orangeBright], ["SLG", f3(display.slg), "#fbbf24"], ["OPS", f3(display.ops), display.ops >= .8 ? C.orange : C.text], ["H", display.hits], ["HR", display.hr, C.orange], ["BB", display.bb, "#fbbf24"], ["K", display.k, C.dim]].map(([l, v, c]) => (
-            <div key={l} style={{ background: C.bg, borderRadius: 6, padding: "6px 8px", display: "flex", flexDirection: "column", alignItems: "center", minWidth: 42 }}>
-              <span style={{ fontSize: 14, fontWeight: 800, color: c || C.text, fontFamily: mono }}>{v}</span>
-              <span style={{ fontSize: 8, color: C.dim, fontWeight: 700, fontFamily: mono }}>{l}</span>
-            </div>
-          ))}
         </div>
 
         <div style={{ background: C.card, borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden" }}>
           <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 30px 30px 30px 40px 40px 40px", padding: "7px 10px", borderBottom: `1px solid ${C.orange}30`, background: C.orangeBg, gap: 2 }}>
             {["", "AB", "H", "HR", "AVG", "OBP", "OPS"].map((h) => <span key={h} style={{ fontSize: 8, fontWeight: 700, color: C.orange, fontFamily: mono, textAlign: h ? "center" : "left" }}>{h}</span>)}
           </div>
-          {players.map((p, i) => {
-            const isSelected = selPlayer === p.id;
-            return (
-              <div key={p.id} onClick={() => setSelPlayer(isSelected ? null : p.id)} style={{
-                display: "grid", gridTemplateColumns: "minmax(0,1fr) 30px 30px 30px 40px 40px 40px",
-                padding: "8px 10px", borderBottom: `1px solid ${C.border}`, cursor: "pointer",
-                background: isSelected ? C.orangeBg : (i % 2 ? C.bg + "80" : "transparent"),
-                border: isSelected ? `1px solid ${C.orange}40` : "1px solid transparent",
-                gap: 2, WebkitTapHighlightColor: "transparent",
-              }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: isSelected ? C.orange : C.text, fontFamily: sans, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
-                {[p.st.atbats, p.st.hits, p.st.hr].map((v, j) => <span key={j} style={{ fontSize: 11, fontWeight: 600, textAlign: "center", color: C.text, fontFamily: mono }}>{v}</span>)}
-                {[[f3(p.st.avg), p.st.avg >= .3 ? C.orange : C.text], [f3(p.st.obp), p.st.obp >= .4 ? C.orangeBright : C.text], [f3(p.st.ops), p.st.ops >= .8 ? "#fbbf24" : C.text]].map(([v, c], j) => <span key={j + 3} style={{ fontSize: 11, fontWeight: 600, textAlign: "center", color: c, fontFamily: mono }}>{v}</span>)}
-              </div>
-            );
-          })}
-          {/* Team totals row at bottom */}
-          {players.length > 0 && (
-            <div onClick={() => setSelPlayer(null)} style={{
+          {players.map((p, i) => (
+            <div key={p.id} onClick={() => setDetailPlayer(p)} style={{
               display: "grid", gridTemplateColumns: "minmax(0,1fr) 30px 30px 30px 40px 40px 40px",
-              padding: "8px 10px", cursor: "pointer",
-              background: !selPlayer ? C.orangeBg : C.card,
-              borderTop: `2px solid ${C.orange}30`,
+              padding: "8px 10px", borderBottom: `1px solid ${C.border}`, cursor: "pointer",
+              background: i % 2 ? C.bg + "80" : "transparent",
               gap: 2, WebkitTapHighlightColor: "transparent",
             }}>
-              <span style={{ fontSize: 11, fontWeight: 800, color: !selPlayer ? C.orange : C.dim, fontFamily: mono }}>TEAM</span>
-              {[team.atbats, team.hits, team.hr].map((v, j) => <span key={j} style={{ fontSize: 11, fontWeight: 700, textAlign: "center", color: !selPlayer ? C.orange : C.dim, fontFamily: mono }}>{v}</span>)}
-              {[[f3(team.avg), C.orange], [f3(team.obp), C.orangeBright], [f3(team.ops), "#fbbf24"]].map(([v, c], j) => <span key={j + 3} style={{ fontSize: 11, fontWeight: 700, textAlign: "center", color: !selPlayer ? c : C.dim, fontFamily: mono }}>{v}</span>)}
+              <span style={{ fontSize: 11, fontWeight: 700, color: C.text, fontFamily: sans, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
+              {[p.st.atbats, p.st.hits, p.st.hr].map((v, j) => <span key={j} style={{ fontSize: 11, fontWeight: 600, textAlign: "center", color: C.text, fontFamily: mono }}>{v}</span>)}
+              {[[f3(p.st.avg), p.st.avg >= .3 ? C.orange : C.text], [f3(p.st.obp), p.st.obp >= .4 ? C.orangeBright : C.text], [f3(p.st.ops), p.st.ops >= .8 ? "#fbbf24" : C.text]].map(([v, c], j) => <span key={j + 3} style={{ fontSize: 11, fontWeight: 600, textAlign: "center", color: c, fontFamily: mono }}>{v}</span>)}
+            </div>
+          ))}
+          {/* Team totals row */}
+          {players.length > 0 && (
+            <div style={{
+              display: "grid", gridTemplateColumns: "minmax(0,1fr) 30px 30px 30px 40px 40px 40px",
+              padding: "8px 10px", background: C.orangeBg, borderTop: `2px solid ${C.orange}30`, gap: 2,
+            }}>
+              <span style={{ fontSize: 11, fontWeight: 800, color: C.orange, fontFamily: mono }}>TEAM</span>
+              {[team.atbats, team.hits, team.hr].map((v, j) => <span key={j} style={{ fontSize: 11, fontWeight: 700, textAlign: "center", color: C.orange, fontFamily: mono }}>{v}</span>)}
+              {[[f3(team.avg), C.orange], [f3(team.obp), C.orangeBright], [f3(team.ops), "#fbbf24"]].map(([v, c], j) => <span key={j + 3} style={{ fontSize: 11, fontWeight: 700, textAlign: "center", color: c, fontFamily: mono }}>{v}</span>)}
             </div>
           )}
           {players.length === 0 && <div style={{ padding: 24, textAlign: "center", color: C.dim, fontSize: 12, fontFamily: mono }}>No stats yet.</div>}
@@ -672,11 +747,8 @@ function ScheduleView({ schedule, onUpdateGame }) {
 function RosterView({ roster, onAddPlayer, onUpdatePlayer, onReorder, onSoftRemove, onRestore }) {
   const [newName, setNewName] = useState("");
   const [newNumber, setNewNumber] = useState("");
-  const [editingId, setEditingId] = useState(null);
-  const [editName, setEditName] = useState("");
-  const [editNumber, setEditNumber] = useState("");
   const [confirmRemove, setConfirmRemove] = useState(null);
-  const [moveFrom, setMoveFrom] = useState(null); // index of player being moved
+  const [moveFrom, setMoveFrom] = useState(null);
   const active = roster.filter((p) => p.active && !p.removed).sort((a, b) => a.order - b.order);
   const inactive = roster.filter((p) => !p.active && !p.removed);
   const removed = roster.filter((p) => p.removed);
@@ -688,19 +760,12 @@ function RosterView({ roster, onAddPlayer, onUpdatePlayer, onReorder, onSoftRemo
     setNewName(""); setNewNumber("");
   };
 
-  const saveEdit = (id) => {
-    const name = editName.trim();
-    if (!name) return;
-    onUpdatePlayer(id, { name, number: editNumber.trim() });
-    setEditingId(null);
-  };
-
   const handleTapToMove = (i) => {
-    if (editingId || confirmRemove) return;
+    if (confirmRemove) return;
     if (moveFrom === null) {
       setMoveFrom(i);
     } else if (moveFrom === i) {
-      setMoveFrom(null); // deselect
+      setMoveFrom(null);
     } else {
       onReorder(moveFrom, i);
       setMoveFrom(null);
@@ -729,20 +794,11 @@ function RosterView({ roster, onAddPlayer, onUpdatePlayer, onReorder, onSoftRemo
               border: isSelected ? `2px solid ${C.white}` : isTarget ? `2px dashed ${C.orange}` : "none",
             }}>{isSelected ? "↕" : i + 1}</div>
           )}
-          {editingId === p.id ? (
-            <div onClick={(e) => e.stopPropagation()} style={{ flex: 1, display: "flex", gap: 4, alignItems: "center" }}>
-              <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && saveEdit(p.id)} autoFocus placeholder="Name" style={{ flex: 1, background: C.bg, border: `1px solid ${C.orange}50`, borderRadius: 4, color: C.text, padding: "4px 8px", fontSize: 13, fontFamily: sans, boxSizing: "border-box" }} />
-              <input type="text" value={editNumber} onChange={(e) => setEditNumber(e.target.value)} onKeyDown={(e) => e.key === "Enter" && saveEdit(p.id)} placeholder="#" style={{ width: 40, background: C.bg, border: `1px solid ${C.orange}50`, borderRadius: 4, color: C.orange, padding: "4px 6px", fontSize: 13, fontFamily: mono, textAlign: "center", boxSizing: "border-box" }} />
-              <button onClick={() => saveEdit(p.id)} style={{ background: C.orange, border: "none", borderRadius: 4, padding: "4px 8px", color: C.black, fontSize: 9, fontWeight: 700, cursor: "pointer", fontFamily: mono }}>SAVE</button>
-              <button onClick={() => setEditingId(null)} style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 4, padding: "4px 8px", color: C.dim, fontSize: 9, fontWeight: 700, cursor: "pointer", fontFamily: mono }}>✕</button>
-            </div>
-          ) : (
-            <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: isSelected ? C.orange : C.text, fontFamily: sans, display: "flex", alignItems: "center", gap: 6 }}>
-              {p.name}
-              {p.number !== undefined && p.number !== "" && <span style={{ fontSize: 12, fontWeight: 700, color: C.orange, fontFamily: mono, opacity: 0.6 }}>#{p.number}</span>}
-            </span>
-          )}
-          {!isRemoved && editingId !== p.id && !isMoving && (
+          <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: isSelected ? C.orange : C.text, fontFamily: sans, display: "flex", alignItems: "center", gap: 6 }}>
+            {p.name}
+            {p.number !== undefined && p.number !== "" && <span style={{ fontSize: 12, fontWeight: 700, color: C.orange, fontFamily: mono, opacity: 0.6 }}>#{p.number}</span>}
+          </span>
+          {!isRemoved && !isMoving && (
             <div onClick={(e) => e.stopPropagation()} style={{ display: "flex", gap: 4, alignItems: "center" }}>
               {isActive ? (
                 <button onClick={() => onUpdatePlayer(p.id, { active: false })} style={{ background: C.dangerBg, border: `1px solid ${C.danger}30`, borderRadius: 6, padding: "4px 8px", color: C.danger, fontSize: 9, fontWeight: 700, cursor: "pointer", fontFamily: mono }}>OUT</button>
@@ -752,7 +808,7 @@ function RosterView({ roster, onAddPlayer, onUpdatePlayer, onReorder, onSoftRemo
               <button onClick={() => setConfirmRemove(confirmRemove === p.id ? null : p.id)} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 6, padding: "4px 6px", color: C.dim, fontSize: 11, cursor: "pointer" }}>🗑</button>
             </div>
           )}
-          {isRemoved && editingId !== p.id && <div onClick={(e) => e.stopPropagation()}><button onClick={() => onRestore(p.id)} style={{ background: C.orangeBg, border: `1px solid ${C.orange}30`, borderRadius: 6, padding: "4px 10px", color: C.orange, fontSize: 9, fontWeight: 700, cursor: "pointer", fontFamily: mono }}>RESTORE</button></div>}
+          {isRemoved && <div onClick={(e) => e.stopPropagation()}><button onClick={() => onRestore(p.id)} style={{ background: C.orangeBg, border: `1px solid ${C.orange}30`, borderRadius: 6, padding: "4px 10px", color: C.orange, fontSize: 9, fontWeight: 700, cursor: "pointer", fontFamily: mono }}>RESTORE</button></div>}
         </div>
         {confirmRemove === p.id && (
           <div style={{ padding: "8px 10px", borderTop: `1px solid ${C.danger}30`, background: C.dangerBg, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -859,13 +915,20 @@ export default function App() {
   // ── Load data from sheet ──
   const loadData = useCallback(async () => {
     if (!SCRIPT_URL) return;
-    // Skip sync if user made a change within last 5 seconds
-    if (Date.now() - _lastActionTime < 5000) return;
+    // Skip sync if user made a change within last 8 seconds
+    if (Date.now() - _lastActionTime < 8000) return;
     setSyncing(true);
     const data = await fetchAll();
     if (data) {
       if (data.roster && data.roster.length > 0) setRoster(data.roster);
-      if (data.atBats) setAtBats(data.atBats);
+      if (data.atBats) {
+        setAtBats((prev) => {
+          const sheetIds = new Set(data.atBats.map((ab) => ab.id));
+          // Keep local at-bats that haven't made it to the sheet yet
+          const localOnly = prev.filter((ab) => !sheetIds.has(ab.id));
+          return [...data.atBats, ...localOnly];
+        });
+      }
       if (data.schedule && data.schedule.length > 0) {
         const merged = data.schedule.map((g) => ({
           ...g,
@@ -1056,6 +1119,7 @@ export default function App() {
         input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         input[type="number"] { -moz-appearance: textfield; }
         @keyframes toastIn { from { opacity:0; transform:translateX(-50%) translateY(-8px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
+        @keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
         select option { background: ${C.card}; color: ${C.text}; }
       `}</style>
 
@@ -1088,5 +1152,6 @@ export default function App() {
     </div>
   );
 }
+
 
 
