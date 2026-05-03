@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 // ══════════════════════════════════════════
 // CONFIGURATION - Apps Script Web App URL
 // ══════════════════════════════════════════
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyTEpHUdcXfNTs_k84WDQl9ltRB_3RRe5KcBHQRLwTS38dCDTjBHeJHZU8MuqWFyRcx2Q/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxcvcG3ApSqLNBVnd-1439TKb9qKspYv1AASnkR23HxqLB3cNKh_4XSNb92XH5Sd2MkZQ/exec";
 
 // ── Park Directory ──
 const PARKS = {
@@ -331,10 +331,21 @@ function GameView({ roster, atBats, schedule, gameId, setGameId, onLog, onGameRe
   const [expanded, setExpanded] = useState(null);
   const [showResult, setShowResult] = useState(false);
   const game = schedule.find((g) => g.id === gameId);
-  const active = roster.filter((p) => p.active && !p.removed).sort((a, b) => a.order - b.order);
+  const liveActive = roster.filter((p) => p.active && !p.removed).sort((a, b) => a.order - b.order);
+  const isLocked = game && (game.result === "W" || game.result === "L");
+
+  // Use snapshot lineup for completed games, live roster for active games
+  let active;
+  if (isLocked && game.lineup) {
+    try {
+      active = JSON.parse(game.lineup);
+    } catch { active = liveActive; }
+  } else {
+    active = liveActive;
+  }
+
   const gABs = atBats.filter((ab) => ab.gameId === gameId);
   const park = game ? PARKS[game.park] : null;
-  const isLocked = game && (game.result === "W" || game.result === "L");
   const oriScore = game?.orilesScore ?? 0;
   const oppScore = game?.opponentScore ?? 0;
   const innings = game?.innings ? game.innings.split(",").map(Number) : [0,0,0,0,0,0,0,0,0];
@@ -935,6 +946,7 @@ export default function App() {
           orilesScore: g.orilesScore ?? null,
           opponentScore: g.opponentScore ?? null,
           innings: g.innings || "0,0,0,0,0,0,0,0,0",
+          lineup: g.lineup || "",
         }));
         setSchedule(merged);
         // On first sync, default to next unplayed game
@@ -1089,17 +1101,19 @@ export default function App() {
     }));
   };
 
-  // ── W/L toggle (locks/unlocks score) ──
+  // ── W/L toggle (locks/unlocks score, snapshots lineup) ──
   const handleGameResult = (gId, result, oriScore, oppScore) => {
     if (result === null) {
-      // Unlocking: clear result but keep scores editable
+      // Unlocking: clear result but keep scores and lineup snapshot
       setSchedule((s) => s.map((g) => g.id === gId ? { ...g, result: "" } : g));
       postToSheet({ action: "updateGame", id: gId, result: "" });
       showToast("Unlocked", C.dim);
       return;
     }
-    // Locking: save result with current scores
-    const updates = { result, orilesScore: oriScore, opponentScore: oppScore };
+    // Locking: save result with current scores and snapshot the active lineup
+    const activeRoster = roster.filter((p) => p.active && !p.removed).sort((a, b) => a.order - b.order);
+    const lineup = JSON.stringify(activeRoster.map((p) => ({ id: p.id, name: p.name, number: p.number, order: p.order, active: true, removed: false })));
+    const updates = { result, orilesScore: oriScore, opponentScore: oppScore, lineup };
     setSchedule((s) => s.map((g) => g.id === gId ? { ...g, ...updates } : g));
     postToSheet({ action: "updateGame", id: gId, ...updates });
     showToast(`${result} ${oriScore}-${oppScore}`, result === "W" ? C.green : C.danger);
