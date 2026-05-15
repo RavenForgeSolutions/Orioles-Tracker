@@ -382,7 +382,7 @@ function GameView({ roster, atBats, schedule, gameId, setGameId, onLog, onGameRe
           color: C.text, padding: "10px 12px", fontSize: 13, fontFamily: mono, fontWeight: 700, marginBottom: 8,
         }}>
           {schedule.map((g) => {
-            const dt = new Date(g.date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
+            const dt = g.date === "TBD" ? "TBD" : new Date(g.date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
             const res = g.result ? ` [${g.result}${formatScore(g) ? ` ${formatScore(g)}` : ""}]` : "";
             return <option key={g.id} value={g.id}>G{g.game}: {dt} {g.homeAway === "home" ? "vs" : "@"} {g.opponent}{res}</option>;
           })}
@@ -395,7 +395,7 @@ function GameView({ roster, atBats, schedule, gameId, setGameId, onLog, onGameRe
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 14px 8px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ fontSize: 11, color: C.dim, fontFamily: mono }}>
-                {new Date(game.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })} · {game.time}
+                {game.date === "TBD" ? "Date TBD" : `${new Date(game.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })} · ${game.time}`}
               </span>
               <span style={{ fontSize: 8, fontWeight: 700, padding: "2px 5px", borderRadius: 3, fontFamily: mono, color: game.homeAway === "home" ? C.orange : "#60a5fa", background: game.homeAway === "home" ? C.orangeBg : "#0d1a2e" }}>{game.homeAway === "home" ? "HOME" : "AWAY"}</span>
             </div>
@@ -577,7 +577,7 @@ function PlayerDetailSheet({ player, atBats, schedule, initialMode, initialGame,
             <button onClick={() => setSheetMode("season")} style={{ flex: 1, padding: 7, background: sheetMode === "season" ? C.orange : boxBg, color: sheetMode === "season" ? C.black : "#999", border: `1px solid ${sheetMode === "season" ? C.orange : "#444"}`, borderRadius: 6, fontWeight: 700, fontSize: 11, cursor: "pointer", fontFamily: mono }}>Season</button>
             <select value={sheetGame} onChange={(e) => { setSheetMode("game"); setSheetGame(e.target.value); }} style={{ flex: 1.3, padding: 7, background: sheetMode === "game" ? C.orange : boxBg, color: sheetMode === "game" ? C.black : "#999", border: `1px solid ${sheetMode === "game" ? C.orange : "#444"}`, borderRadius: 6, fontWeight: 700, fontSize: 11, fontFamily: mono }}>
               <option value="" disabled>By game...</option>
-              {schedule.map((g) => { const dt = new Date(g.date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }); return <option key={g.id} value={g.id}>G{g.game} {dt} vs {g.opponent}</option>; })}
+              {schedule.map((g) => { const dt = g.date === "TBD" ? "TBD" : new Date(g.date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }); return <option key={g.id} value={g.id}>G{g.game} {dt} vs {g.opponent}</option>; })}
             </select>
           </div>
 
@@ -656,7 +656,7 @@ function StatsView({ roster, atBats, schedule }) {
           <button onClick={() => setMode("season")} style={{ flex: 1, padding: 8, background: mode === "season" ? C.orange : C.card, color: mode === "season" ? C.black : C.dim, border: `1px solid ${mode === "season" ? C.orange : C.border}`, borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: mono }}>Season</button>
           <select value={selGame} onChange={(e) => { setMode("game"); setSelGame(e.target.value); }} style={{ flex: 1.3, padding: 8, background: mode === "game" ? C.orange : C.card, color: mode === "game" ? C.black : C.dim, border: `1px solid ${mode === "game" ? C.orange : C.border}`, borderRadius: 6, fontWeight: 700, fontSize: 12, fontFamily: mono }}>
             <option value="" disabled>By game...</option>
-            {schedule.map((g) => { const dt = new Date(g.date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }); return <option key={g.id} value={g.id}>G{g.game} {dt} vs {g.opponent}</option>; })}
+            {schedule.map((g) => { const dt = g.date === "TBD" ? "TBD" : new Date(g.date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }); return <option key={g.id} value={g.id}>G{g.game} {dt} vs {g.opponent}</option>; })}
           </select>
         </div>
 
@@ -698,21 +698,37 @@ function StatsView({ roster, atBats, schedule }) {
 function ScheduleView({ schedule, onUpdateGame }) {
   const [editing, setEditing] = useState(null);
   const today = new Date().toISOString().split("T")[0];
+  const sorted = [...schedule].sort((a, b) => {
+    if (a.date === "TBD" && b.date !== "TBD") return 1;
+    if (b.date === "TBD" && a.date !== "TBD") return -1;
+    if (a.date === "TBD" && b.date === "TBD") return 0;
+    return a.date.localeCompare(b.date);
+  });
   return (
     <div>
       <div style={{ padding: "10px 14px 8px" }}><p style={{ margin: 0, fontSize: 11, color: C.dim, fontFamily: mono }}>Tap ✏️ to reschedule any game</p></div>
       <div style={{ padding: "0 14px 80px" }}>
-        {schedule.map((g) => {
-          const d = new Date(g.date + "T12:00:00"); const isPast = g.date < today; const isToday = g.date === today; const park = PARKS[g.park]; const ed = editing === g.id;
+        {sorted.map((g) => {
+          const isTBD = g.date === "TBD";
+          const d = isTBD ? null : new Date(g.date + "T12:00:00");
+          const isPast = !isTBD && g.date < today;
+          const isToday = !isTBD && g.date === today;
+          const park = PARKS[g.park]; const ed = editing === g.id;
           const score = formatScore(g);
           return (
-            <div key={g.id} style={{ background: C.card, borderRadius: 10, marginBottom: 6, border: `1px solid ${isToday ? C.orange + "80" : ed ? C.orange + "50" : C.border}`, opacity: isPast && !g.result ? 0.4 : 1, overflow: "hidden" }}>
+            <div key={g.id} style={{ background: C.card, borderRadius: 10, marginBottom: 6, border: `1px solid ${isToday ? C.orange + "80" : ed ? C.orange + "50" : C.border}`, opacity: (isPast && !g.result) || isTBD ? 0.4 : 1, overflow: "hidden" }}>
               <div style={{ display: "flex", alignItems: "center", padding: "10px 12px", gap: 10 }}>
-                <div style={{ width: 40, display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, background: "#2a2a2a", borderRadius: 6, padding: "4px 0", border: `1.5px solid ${C.orange}50` }}>
-                  <span style={{ fontSize: 8, fontWeight: 700, color: C.orange, fontFamily: mono }}>{d.toLocaleDateString("en-US", { month: "short" }).toUpperCase()}</span>
-                  <span style={{ fontSize: 18, fontWeight: 800, color: C.text, fontFamily: mono, lineHeight: 1.1 }}>{d.getDate()}</span>
-                  <span style={{ fontSize: 8, fontWeight: 600, color: "#999999", fontFamily: mono }}>{d.toLocaleDateString("en-US", { weekday: "short" })}</span>
-                </div>
+                {isTBD ? (
+                  <div style={{ width: 40, display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, background: "#2a2a2a", borderRadius: 6, padding: "4px 0", border: `1.5px solid ${C.border}` }}>
+                    <span style={{ fontSize: 10, fontWeight: 800, color: C.dim, fontFamily: mono, lineHeight: 2.2 }}>TBD</span>
+                  </div>
+                ) : (
+                  <div style={{ width: 40, display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, background: "#2a2a2a", borderRadius: 6, padding: "4px 0", border: `1.5px solid ${C.orange}50` }}>
+                    <span style={{ fontSize: 8, fontWeight: 700, color: C.orange, fontFamily: mono }}>{d.toLocaleDateString("en-US", { month: "short" }).toUpperCase()}</span>
+                    <span style={{ fontSize: 18, fontWeight: 800, color: C.text, fontFamily: mono, lineHeight: 1.1 }}>{d.getDate()}</span>
+                    <span style={{ fontSize: 8, fontWeight: 600, color: "#999999", fontFamily: mono }}>{d.toLocaleDateString("en-US", { weekday: "short" })}</span>
+                  </div>
+                )}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
                     <span style={{ fontSize: 13, fontWeight: 700, color: C.text, fontFamily: sans }}>{g.homeAway === "home" ? "vs" : "@"} {g.opponent}</span>
@@ -723,7 +739,7 @@ function ScheduleView({ schedule, onUpdateGame }) {
                       </span>
                     )}
                   </div>
-                  <div style={{ fontSize: 10, color: C.dim, fontFamily: mono }}>{g.time} · {park?.name || g.park}</div>
+                  <div style={{ fontSize: 10, color: C.dim, fontFamily: mono }}>{isTBD ? "Date TBD" : `${g.time} · ${park?.name || g.park}`}</div>
                 </div>
                 <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
                   {park && <button onClick={() => openDir(g.park)} style={{ background: C.orangeBg, border: `1px solid ${C.orange}30`, borderRadius: 6, padding: "6px 8px", color: C.orange, fontSize: 13, cursor: "pointer" }}>📍</button>}
@@ -733,7 +749,13 @@ function ScheduleView({ schedule, onUpdateGame }) {
               {ed && (
                 <div style={{ padding: "0 12px 12px", borderTop: `1px solid ${C.orange}25` }}>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, paddingTop: 10 }}>
-                    <div><label style={{ fontSize: 9, color: C.orange, fontFamily: mono, fontWeight: 700 }}>DATE</label><input type="date" value={g.date} onChange={(e) => onUpdateGame(g.id, { date: e.target.value })} style={inputStyle()} /></div>
+                    <div>
+                      <label style={{ fontSize: 9, color: C.orange, fontFamily: mono, fontWeight: 700 }}>DATE</label>
+                      <div style={{ display: "flex", gap: 4, marginTop: 2 }}>
+                        <input type="date" value={g.date === "TBD" ? "" : g.date} onChange={(e) => onUpdateGame(g.id, { date: e.target.value })} style={{ ...inputStyle(), flex: 1, marginTop: 0 }} />
+                        <button onClick={() => onUpdateGame(g.id, { date: "TBD" })} style={{ padding: "6px 8px", borderRadius: 6, border: `1px solid ${g.date === "TBD" ? C.orange : C.border}`, background: g.date === "TBD" ? C.orange : C.bg, color: g.date === "TBD" ? C.black : C.dim, fontSize: 9, fontWeight: 700, cursor: "pointer", fontFamily: mono, flexShrink: 0 }}>TBD</button>
+                      </div>
+                    </div>
                     <div><label style={{ fontSize: 9, color: C.orange, fontFamily: mono, fontWeight: 700 }}>TIME</label><input type="text" value={g.time} onChange={(e) => onUpdateGame(g.id, { time: e.target.value })} style={inputStyle()} /></div>
                     <div><label style={{ fontSize: 9, color: C.orange, fontFamily: mono, fontWeight: 700 }}>OPPONENT</label><select value={g.opponent} onChange={(e) => onUpdateGame(g.id, { opponent: e.target.value })} style={inputStyle()}>{["Angels", "Cubs", "Twins", "Tigers", "Athletics"].map((t) => <option key={t}>{t}</option>)}</select></div>
                     <div><label style={{ fontSize: 9, color: C.orange, fontFamily: mono, fontWeight: 700 }}>PARK</label><select value={g.park} onChange={(e) => onUpdateGame(g.id, { park: e.target.value })} style={inputStyle()}>{Object.keys(PARKS).map((k) => <option key={k} value={k}>{PARKS[k].name}</option>)}</select></div>
@@ -949,10 +971,13 @@ export default function App() {
           lineup: g.lineup || "",
         }));
         setSchedule(merged);
-        // On first sync, default to next unplayed game
+        // On first sync, default to the next upcoming game by date
         if (!hasSynced.current) {
-          const next = merged.find((g) => !g.result);
-          if (next) setGameId(next.id);
+          const today = new Date().toISOString().split("T")[0];
+          const upcoming = merged.filter((g) => g.date >= today && g.date !== "TBD").sort((a, b) => a.date.localeCompare(b.date));
+          if (upcoming.length > 0) {
+            setGameId(upcoming[0].id);
+          }
         }
       }
       setLastSync(new Date().toLocaleTimeString());
@@ -1166,3 +1191,4 @@ export default function App() {
     </div>
   );
 }
+
