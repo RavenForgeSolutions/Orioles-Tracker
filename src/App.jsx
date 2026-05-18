@@ -973,7 +973,8 @@ export default function App() {
         setSchedule(merged);
         // On first sync, default to the next upcoming game by date
         if (!hasSynced.current) {
-          const today = new Date().toISOString().split("T")[0];
+          const now = new Date();
+          const today = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0") + "-" + String(now.getDate()).padStart(2, "0");
           const upcoming = merged.filter((g) => g.date >= today && g.date !== "TBD").sort((a, b) => a.date.localeCompare(b.date));
           if (upcoming.length > 0) {
             setGameId(upcoming[0].id);
@@ -1191,4 +1192,3 @@ export default function App() {
     </div>
   );
 }
-
